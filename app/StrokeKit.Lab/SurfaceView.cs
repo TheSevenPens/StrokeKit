@@ -46,6 +46,8 @@ public sealed class SurfaceView : Control
     private int _lastWidth;
     private int _lastHeight;
 
+    private bool _handPanning;
+
     public SurfaceView(Surface art)
     {
         _art = art;
@@ -54,6 +56,31 @@ public sealed class SurfaceView : Control
     }
 
     public View View { get; private set; } = View.At(1);
+
+    /// <summary>The viewport, in physical display pixels. Zero until the first frame.</summary>
+    public int ViewportWidth { get; private set; }
+
+    public int ViewportHeight { get; private set; }
+
+    /// <summary>
+    /// Whether the space bar is held.
+    /// <para>
+    /// A drag pans either way for now, because there is no other tool competing for it. The
+    /// key is here because it is the idiom a reader already has, and because the moment a
+    /// brush exists the drag belongs to the brush and this becomes the only way to pan.
+    /// </para>
+    /// </summary>
+    public bool HandPanning
+    {
+        get => _handPanning;
+        set
+        {
+            if (_handPanning == value) return;
+
+            _handPanning = value;
+            Cursor = new Cursor(value ? StandardCursorType.Hand : StandardCursorType.Arrow);
+        }
+    }
 
     /// <summary>Physical pixels per device independent unit, as this window reports it.</summary>
     public double RenderScale => TopLevel.GetTopLevel(this)?.RenderScaling ?? 1;
@@ -71,13 +98,21 @@ public sealed class SurfaceView : Control
     {
         var (width, height) = Presentation.PixelSize(Bounds.Width, Bounds.Height, RenderScale);
 
-        SetView(View.PannedTo(
-            (width - _art.PixelWidth * View.Zoom) / 2,
-            (height - _art.PixelHeight * View.Zoom) / 2));
+        SetView(View.Centred(View.Zoom, _art.PixelWidth, _art.PixelHeight, width, height));
+    }
+
+    /// <summary>Zoom out, if needed, until the whole surface is in the window.</summary>
+    public void FitSurface()
+    {
+        var (width, height) = Presentation.PixelSize(Bounds.Width, Bounds.Height, RenderScale);
+
+        SetView(View.Fitting(_art.PixelWidth, _art.PixelHeight, width, height));
     }
 
     protected override void OnPointerPressed(PointerPressedEventArgs e)
     {
+        Focus();
+
         _dragging = true;
         _dragFrom = e.GetPosition(this);
         _panFrom = (View.PanX, View.PanY);
@@ -112,6 +147,9 @@ public sealed class SurfaceView : Control
         // those; nothing below is in device independent units.
         var (width, height) = Presentation.PixelSize(Bounds.Width, Bounds.Height, scale);
         if (width <= 0 || height <= 0) return;
+
+        ViewportWidth = width;
+        ViewportHeight = height;
 
         KeepTheCentreAcrossChanges(scale, width, height);
         EnsurePresentationBitmap(width, height);

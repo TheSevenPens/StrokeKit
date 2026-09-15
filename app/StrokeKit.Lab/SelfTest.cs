@@ -32,6 +32,8 @@ public static class SelfTest
                      ("magnification only goes in whole steps", WholeSteps),
                      ("a pan is always a whole number of display pixels", WholePans),
                      ("minification averages rather than aliases", NoAliasing),
+                     ("fit brings the whole surface into the window", FitFits),
+                     ("a scroll bar agrees with the pan", ScrollBarsAgree),
                      ("the demo figure lands inside the surface", DemoFits),
                  })
         {
@@ -148,6 +150,57 @@ public static class SelfTest
 
         if (spread > 8) return $"rows range from {alphas.Min()} to {alphas.Max()}, which is banding";
         if (alphas.Max() == 0 || alphas.Min() == 255) return "the pattern was lost rather than averaged";
+
+        return null;
+    }
+
+    private static string? FitFits()
+    {
+        // A viewport the application's surface does not fit in, so fit has to zoom out, and
+        // one it does, so fit has to leave the zoom alone.
+        foreach (var (width, height, mustZoomOut) in new[] { (1246, 900, true), (1246, 1500, false) })
+        {
+            var view = View.Fitting(1000, 1000, width, height);
+
+            if (view.Zoom > 1) return $"fit magnified to {view.Zoom}x in a {width}x{height} viewport";
+
+            var (left, top) = view.ToDisplay(0, 0);
+            var (right, bottom) = view.ToDisplay(1000, 1000);
+
+            if (left < 0 || top < 0 || right > width || bottom > height)
+            {
+                return $"in a {width}x{height} viewport the surface runs from ({left}, {top}) "
+                    + $"to ({right}, {bottom}), which is outside it";
+            }
+
+            if (!mustZoomOut)
+            {
+                // It already fitted, so fit is 100% and not something smaller that happens to
+                // fit as well.
+                if (view.Zoom != 1) return $"a surface that already fitted was shown at {view.Zoom}x";
+                continue;
+            }
+
+            // It did not fit, so the fit is against the limiting pair of edges. Any further out
+            // than that is zooming for no reason.
+            if (left > 1 && top > 1)
+                return $"the surface starts at ({left}, {top}) and reaches no edge, so the fit is too small";
+        }
+
+        return null;
+    }
+
+    private static string? ScrollBarsAgree()
+    {
+        var bar = Scrolling.For(1000, 445, 0);
+
+        if (!bar.Needed) return "a surface wider than its viewport reports nothing to scroll";
+
+        if (Math.Abs(bar.Maximum - bar.Minimum - 555) > 1e-9)
+            return $"the bar spans {bar.Maximum - bar.Minimum} where the hidden part is 555";
+
+        if (Scrolling.For(200, 445, 122).Needed)
+            return "a surface smaller than its viewport reports something to scroll";
 
         return null;
     }

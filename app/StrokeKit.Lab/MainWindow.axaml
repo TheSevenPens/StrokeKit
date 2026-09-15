@@ -12,15 +12,29 @@
             <Button x:Name="ZoomReset" Content="100%" />
             <Button x:Name="ZoomIn" Content="+" Width="34" />
             <Border Width="12" />
+            <Button x:Name="FitIt" Content="Fit" />
             <Button x:Name="Centre" Content="Centre" />
+            <Border Width="12" />
+            <TextBlock VerticalAlignment="Center" Opacity="0.55" FontSize="12"
+                       Text="hold space to pan" />
         </StackPanel>
 
         <TextBlock x:Name="Status" DockPanel.Dock="Bottom"
                    Margin="10,6,10,10" FontFamily="Cascadia Mono,Consolas,monospace"
                    FontSize="12" Opacity="0.75" />
 
-        <Border Margin="10,0,10,0" BorderThickness="1" BorderBrush="#40808080">
-            <Panel x:Name="Host" Background="#20808080" />
-        </Border>
+        <!-- The scroll bars sit outside the border, so the bordered region is exactly the
+             viewport the status line reports and nothing overlaps the presented pixels. -->
+        <Grid Margin="10,0,10,0" ColumnDefinitions="*,Auto" RowDefinitions="*,Auto">
+            <Border Grid.Row="0" Grid.Column="0" BorderThickness="1" BorderBrush="#40808080">
+                <Panel x:Name="Host" Background="#20808080" />
+            </Border>
+
+            <ScrollBar x:Name="ScrollY" Grid.Row="0" Grid.Column="1"
+                       Orientation="Vertical" AllowAutoHide="False" Margin="2,0,0,0" />
+
+            <ScrollBar x:Name="ScrollX" Grid.Row="1" Grid.Column="0"
+                       Orientation="Horizontal" AllowAutoHide="False" Margin="0,2,0,0" />
+        </Grid>
     </DockPanel>
 </Window>
