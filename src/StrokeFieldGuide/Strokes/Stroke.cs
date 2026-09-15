@@ -9,6 +9,13 @@ namespace StrokeFieldGuide.Strokes;
 /// readings and nothing more. What a brush engine needs from one in order to draw it is a
 /// separate question, and a separate page.
 /// </para>
+/// <para>
+/// <b>This type is the finished form.</b> While the pen is down a stroke is still arriving,
+/// and an interactive pipeline draws each new point as it comes rather than waiting for the
+/// lift. The two views agree because a growing stroke is a prefix of the finished one, which
+/// the points-to-stroke page checks. Nothing here yet serves the growing case, because every
+/// page using it so far replays a recording.
+/// </para>
 /// </summary>
 public sealed class Stroke
 {
