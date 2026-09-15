@@ -187,29 +187,5 @@ public static class Presenter
     /// two different pictures rather than two presentations of one.
     /// </para>
     /// </summary>
-    public static SKImage SnapshotOf(Surface source)
-    {
-        var info = new SKImageInfo(source.PixelWidth, source.PixelHeight,
-            SKColorType.Rgba8888, SKAlphaType.Premul);
-
-        var pixels = new byte[info.BytesSize];
-        for (var row = 0; row < source.PixelHeight; row++)
-        {
-            for (var column = 0; column < source.PixelWidth; column++)
-            {
-                var stored = source.ReadStored(column, row);
-                var at = (row * source.PixelWidth + column) * 4;
-
-                pixels[at] = stored.Red;
-                pixels[at + 1] = stored.Green;
-                pixels[at + 2] = stored.Blue;
-                pixels[at + 3] = stored.Alpha;
-            }
-        }
-
-        // The stored bytes, not the un-premultiplied colours: a snapshot has to carry what
-        // the surface holds, and converting on the way out and back in would lose precision
-        // at low alpha for no reason.
-        return SKImage.FromPixelCopy(info, pixels);
-    }
+    public static SKImage SnapshotOf(Surface source) => source.Snapshot();
 }

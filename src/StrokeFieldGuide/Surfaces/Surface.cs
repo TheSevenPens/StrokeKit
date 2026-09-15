@@ -165,6 +165,22 @@ public sealed class Surface : IDisposable
     }
 
     /// <summary>
+    /// An image of the pixels this surface holds.
+    /// <para>
+    /// One operation, and the reason to prefer it over assembling an image a pixel at a time
+    /// is not tidiness. Every <see cref="ReadStored"/> call acquires and releases its own
+    /// pixmap, so reading a 1000x1000 surface that way is a million of them: measured at 189
+    /// milliseconds, which is five frames a second and is what a reader feels as a drag that
+    /// will not keep up.
+    /// </para>
+    /// <para>
+    /// The image carries what the surface holds, premultiplied, with no conversion in either
+    /// direction. Drawing into the surface afterwards leaves the image as it was.
+    /// </para>
+    /// </summary>
+    public SKImage Snapshot() => _surface.Snapshot();
+
+    /// <summary>
     /// Every pixel, as a copy, for a check that needs to scan rather than sample.
     /// </summary>
     public SKColor[] ReadAll()
