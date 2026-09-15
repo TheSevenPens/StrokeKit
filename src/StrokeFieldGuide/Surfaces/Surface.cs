@@ -5,8 +5,8 @@ namespace StrokeFieldGuide.Surfaces;
 /// <summary>
 /// A rectangle of pixels, and the logical size it is shown at.
 /// <para>
-/// Skia's vocabulary, kept deliberately: a <b>surface</b> owns pixels and a <b>canvas</b>
-/// draws onto one. That split is the reason this type exists separately from anything that
+/// Skia's vocabulary, kept deliberately: a <b>surface</b> owns pixels and a <b>canvas</b> is
+/// what a drawing operation is issued to. That split is the reason this type exists separately from anything that
 /// presents it, and the reason it knows nothing about windows, pens or strokes.
 /// </para>
 /// <para>
@@ -179,6 +179,60 @@ public sealed class Surface : IDisposable
         }
 
         return pixels;
+    }
+
+    /// <summary>
+    /// The smallest rectangle containing every pixel with any ink in it, in pixel
+    /// coordinates, with the right and bottom edges exclusive.
+    /// <para>
+    /// The measurement a size claim needs. Any alpha at all counts, so an antialiased edge
+    /// widens the answer by up to a pixel on each side, and a check on a diameter has to
+    /// leave room for that rather than demanding an exact figure.
+    /// </para>
+    /// <returns>Null when nothing was drawn, which is a different answer from an empty box.</returns>
+    /// </summary>
+    public (int Left, int Top, int Right, int Bottom)? InkBounds()
+    {
+        using var pixmap = _surface.PeekPixels()
+            ?? throw new InvalidOperationException("the surface did not expose its pixels");
+
+        int left = int.MaxValue, top = int.MaxValue, right = int.MinValue, bottom = int.MinValue;
+
+        for (var y = 0; y < PixelHeight; y++)
+        {
+            for (var x = 0; x < PixelWidth; x++)
+            {
+                if (pixmap.GetPixelColor(x, y).Alpha == 0) continue;
+
+                left = Math.Min(left, x);
+                top = Math.Min(top, y);
+                right = Math.Max(right, x + 1);
+                bottom = Math.Max(bottom, y + 1);
+            }
+        }
+
+        return right == int.MinValue ? null : (left, top, right, bottom);
+    }
+
+    /// <summary>
+    /// The strongest alpha anywhere on the surface.
+    /// <para>
+    /// Alpha rather than colour, because alpha is stored exactly and a recovered colour is
+    /// not: see the page on reading pixels back.
+    /// </para>
+    /// </summary>
+    public int PeakAlpha()
+    {
+        using var pixmap = _surface.PeekPixels()
+            ?? throw new InvalidOperationException("the surface did not expose its pixels");
+
+        var peak = 0;
+        for (var y = 0; y < PixelHeight; y++)
+        {
+            for (var x = 0; x < PixelWidth; x++) peak = Math.Max(peak, pixmap.GetPixelColor(x, y).Alpha);
+        }
+
+        return peak;
     }
 
     /// <summary>
