@@ -34,6 +34,7 @@ public static class SelfTest
                      ("minification averages rather than aliases", NoAliasing),
                      ("fit brings the whole surface into the window", FitFits),
                      ("a scroll bar agrees with the pan", ScrollBarsAgree),
+                     ("a frame does not read the surface per pixel", FrameCost),
                      ("the demo figure lands inside the surface", DemoFits),
                  })
         {
@@ -201,6 +202,40 @@ public static class SelfTest
 
         if (Scrolling.For(200, 445, 122).Needed)
             return "a surface smaller than its viewport reports something to scroll";
+
+        return null;
+    }
+
+    /// <summary>
+    /// The one check here that is not about which pixels come out.
+    /// <para>
+    /// A frame that acquires the surface's pixels once per pixel rather than once is correct
+    /// -- every other check here passed while it took 189 milliseconds a frame -- and a
+    /// reader calls it broken anyway. Counted rather than timed, so the answer is the same on
+    /// every machine.
+    /// </para>
+    /// </summary>
+    private static string? FrameCost()
+    {
+        using var display = Surface.CreateExactly(1000, 1000, 1000, 1000);
+
+        long Frame(int size)
+        {
+            using var art = Figure(size);
+
+            var before = art.Reads;
+            Presenter.Present(art, display, View.At(1));
+
+            return art.Reads - before;
+        }
+
+        var small = Frame(100);
+        var large = Frame(400);
+
+        if (large != small)
+            return $"a 400px surface took {large} reads and a 100px one {small}, so the cost is per pixel";
+
+        if (small > 4) return $"a frame reads the surface {small} times, which is not a fixed handful";
 
         return null;
     }
