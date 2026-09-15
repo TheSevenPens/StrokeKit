@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <RootNamespace>StrokeFieldGuide.Lab</RootNamespace>
+    <AssemblyName>StrokeFieldGuide.Lab</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      Named backends rather than the Avalonia.Desktop metapackage, which also pulls the X11,
+      FreeDesktop and macOS subtrees this Windows-only application can never load. Avalonia
+      12 also split text shaping out of Skia: without Avalonia.HarfBuzz the application
+      throws "No text shaping system configured" at startup, and naming the other backends
+      does not register it. Both facts are WinPenKit's, paid for there and reused here.
+    -->
+    <PackageReference Include="Avalonia" Version="$(AvaloniaVersion)" />
+    <PackageReference Include="Avalonia.Win32" Version="$(AvaloniaVersion)" />
+    <PackageReference Include="Avalonia.Skia" Version="$(AvaloniaVersion)" />
+    <PackageReference Include="Avalonia.HarfBuzz" Version="$(AvaloniaVersion)" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="$(AvaloniaVersion)" />
+    <PackageReference Include="SkiaSharp" Version="$(SkiaSharpVersion)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\StrokeFieldGuide\StrokeFieldGuide.csproj" />
+  </ItemGroup>
+
+</Project>

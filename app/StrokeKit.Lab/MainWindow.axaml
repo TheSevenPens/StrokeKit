@@ -1,0 +1,26 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="StrokeFieldGuide.Lab.MainWindow"
+        Title="Stroke Field Guide — stage one: surface, canvas, view"
+        Width="1100" Height="820">
+    <DockPanel>
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="10,10,10,6" Spacing="6">
+            <Button x:Name="DrawDemo" Content="Draw demo" />
+            <Button x:Name="ClearIt" Content="Clear" />
+            <Border Width="12" />
+            <Button x:Name="ZoomOut" Content="−" Width="34" />
+            <Button x:Name="ZoomReset" Content="100%" />
+            <Button x:Name="ZoomIn" Content="+" Width="34" />
+            <Border Width="12" />
+            <Button x:Name="Centre" Content="Centre" />
+        </StackPanel>
+
+        <TextBlock x:Name="Status" DockPanel.Dock="Bottom"
+                   Margin="10,6,10,10" FontFamily="Cascadia Mono,Consolas,monospace"
+                   FontSize="12" Opacity="0.75" />
+
+        <Border Margin="10,0,10,0" BorderThickness="1" BorderBrush="#40808080">
+            <Panel x:Name="Host" Background="#20808080" />
+        </Border>
+    </DockPanel>
+</Window>
