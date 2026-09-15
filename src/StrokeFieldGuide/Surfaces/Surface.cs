@@ -59,6 +59,28 @@ public sealed class Surface : IDisposable
     public SKCanvas Canvas => _surface.Canvas;
 
     /// <summary>
+    /// How many times anything has asked this surface for its pixels.
+    /// <para>
+    /// A diagnostic, and the only reason it is here is that it makes a claim about cost into
+    /// a claim that can be checked the same way every other claim in this guide is. Acquiring
+    /// the pixels is not free, and code that does it once per pixel rather than once per
+    /// frame is correct, looks reasonable, and runs a hundred times slower. Counting is
+    /// deterministic; timing is a different number on every machine and would have to be
+    /// given a threshold somebody would eventually have to loosen.
+    /// </para>
+    /// </summary>
+    public long Reads { get; private set; }
+
+    /// <summary>The one place the pixels are acquired, so that <see cref="Reads"/> is true.</summary>
+    private SKPixmap Pixels()
+    {
+        Reads++;
+
+        return _surface.PeekPixels()
+            ?? throw new InvalidOperationException("the surface did not expose its pixels");
+    }
+
+    /// <summary>
     /// A surface of <paramref name="logicalWidth"/> by <paramref name="logicalHeight"/>,
     /// with enough pixels for <paramref name="scale"/>.
     /// <para>
@@ -132,8 +154,7 @@ public sealed class Surface : IDisposable
                 $"({x}, {y}) is outside a {PixelWidth}x{PixelHeight} surface");
         }
 
-        using var pixmap = _surface.PeekPixels()
-            ?? throw new InvalidOperationException("the surface did not expose its pixels");
+        using var pixmap = Pixels();
 
         return pixmap.GetPixelColor(x, y);
     }
@@ -155,8 +176,7 @@ public sealed class Surface : IDisposable
                 $"({x}, {y}) is outside a {PixelWidth}x{PixelHeight} surface");
         }
 
-        using var pixmap = _surface.PeekPixels()
-            ?? throw new InvalidOperationException("the surface did not expose its pixels");
+        using var pixmap = Pixels();
 
         var bytes = pixmap.GetPixelSpan();
         var offset = (y * PixelWidth + x) * 4;
@@ -178,15 +198,19 @@ public sealed class Surface : IDisposable
     /// direction. Drawing into the surface afterwards leaves the image as it was.
     /// </para>
     /// </summary>
-    public SKImage Snapshot() => _surface.Snapshot();
+    public SKImage Snapshot()
+    {
+        Reads++;
+
+        return _surface.Snapshot();
+    }
 
     /// <summary>
     /// Every pixel, as a copy, for a check that needs to scan rather than sample.
     /// </summary>
     public SKColor[] ReadAll()
     {
-        using var pixmap = _surface.PeekPixels()
-            ?? throw new InvalidOperationException("the surface did not expose its pixels");
+        using var pixmap = Pixels();
 
         var pixels = new SKColor[PixelWidth * PixelHeight];
         for (var y = 0; y < PixelHeight; y++)
@@ -209,8 +233,7 @@ public sealed class Surface : IDisposable
     /// </summary>
     public (int Left, int Top, int Right, int Bottom)? InkBounds()
     {
-        using var pixmap = _surface.PeekPixels()
-            ?? throw new InvalidOperationException("the surface did not expose its pixels");
+        using var pixmap = Pixels();
 
         int left = int.MaxValue, top = int.MaxValue, right = int.MinValue, bottom = int.MinValue;
 
@@ -239,8 +262,7 @@ public sealed class Surface : IDisposable
     /// </summary>
     public int PeakAlpha()
     {
-        using var pixmap = _surface.PeekPixels()
-            ?? throw new InvalidOperationException("the surface did not expose its pixels");
+        using var pixmap = Pixels();
 
         var peak = 0;
         for (var y = 0; y < PixelHeight; y++)
@@ -263,8 +285,7 @@ public sealed class Surface : IDisposable
     /// </summary>
     public (double X, double Y)? CentreOfInk()
     {
-        using var pixmap = _surface.PeekPixels()
-            ?? throw new InvalidOperationException("the surface did not expose its pixels");
+        using var pixmap = Pixels();
 
         double weight = 0, sumX = 0, sumY = 0;
 
