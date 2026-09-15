@@ -3,7 +3,6 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <RootNamespace>StrokeFieldGuide.Lab</RootNamespace>
     <AssemblyName>StrokeFieldGuide.Lab</AssemblyName>
   </PropertyGroup>

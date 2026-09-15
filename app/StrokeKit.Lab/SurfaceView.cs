@@ -30,8 +30,6 @@ public sealed class SurfaceView : Control
 {
     private readonly Surface _art;
 
-    private SKBitmap? _presented;
-    private SKCanvas? _presentedCanvas;
     private WriteableBitmap? _shown;
 
     private bool _dragging;
@@ -61,6 +59,18 @@ public sealed class SurfaceView : Control
     public int ViewportWidth { get; private set; }
 
     public int ViewportHeight { get; private set; }
+
+    /// <summary>
+    /// How long the last frame took this control, in milliseconds.
+    /// <para>
+    /// Shown in the status line with everything else that decides whether what is on screen
+    /// is right, because a presentation that is correct and slow is one a reader will call
+    /// broken. It also separates the two halves of a slow frame: this number is the work
+    /// this control does, and the difference between it and what the application actually
+    /// achieves is the windowing system's.
+    /// </para>
+    /// </summary>
+    public double LastFrameMilliseconds { get; private set; }
 
     /// <summary>
     /// Whether the space bar is held.
@@ -141,6 +151,8 @@ public sealed class SurfaceView : Control
 
     public override void Render(Avalonia.Media.DrawingContext context)
     {
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+
         var scale = RenderScale;
 
         // How many physical pixels this control actually occupies. Everything below is in
@@ -154,8 +166,7 @@ public sealed class SurfaceView : Control
         KeepTheCentreAcrossChanges(scale, width, height);
         EnsurePresentationBitmap(width, height);
 
-        Presenter.Present(_art, _presentedCanvas!, View);
-        CopyToShown(width, height);
+        PresentInto(_shown!);
 
         // One pixel of the presented bitmap over exactly one physical pixel of the display.
         // Any other destination rectangle here — the control's own bounds, most temptingly —
@@ -166,6 +177,8 @@ public sealed class SurfaceView : Control
             _shown!,
             new Rect(0, 0, width, height),
             new Rect(0, 0, destinationWidth, destinationHeight));
+
+        LastFrameMilliseconds = clock.Elapsed.TotalMilliseconds;
     }
 
     /// <summary>
@@ -206,17 +219,12 @@ public sealed class SurfaceView : Control
 
     private void EnsurePresentationBitmap(int width, int height)
     {
-        if (_presented is not null && _presented.Width == width && _presented.Height == height) return;
+        if (_shown is not null && _shown.PixelSize.Width == width && _shown.PixelSize.Height == height) return;
 
-        _presentedCanvas?.Dispose();
-        _presented?.Dispose();
         _shown?.Dispose();
 
-        // Bgra8888 because that is what the windowing system wants, which makes the copy
-        // below a straight run of bytes rather than a channel swap on every frame.
-        _presented = new SKBitmap(width, height, SKColorType.Bgra8888, SKAlphaType.Premul);
-        _presentedCanvas = new SKCanvas(_presented);
-
+        // Bgra8888 because that is what the windowing system wants. Presenting straight into
+        // it below is then a plain raster draw rather than a channel swap on every frame.
         _shown = new WriteableBitmap(
             new PixelSize(width, height),
             new Vector(96, 96),
@@ -224,24 +232,28 @@ public sealed class SurfaceView : Control
             AlphaFormat.Premul);
     }
 
-    private void CopyToShown(int width, int height)
+    /// <summary>
+    /// Presents into the bitmap the windowing system is about to show, rather than into one
+    /// of our own that is then copied into it.
+    /// <para>
+    /// A surface built over the locked buffer is still a surface, so the presenter is
+    /// unchanged and everything checked about it still holds. What goes is a copy of the
+    /// whole viewport on every frame -- at 3752x1782 that is 27 megabytes per frame, moved
+    /// for no reason -- and with it the row loop that moved it, whose bounds were clamped
+    /// with a pair of minimums that would have hidden a size disagreement rather than
+    /// reporting one.
+    /// </para>
+    /// </summary>
+    private void PresentInto(WriteableBitmap bitmap)
     {
-        using var locked = _shown!.Lock();
+        using var locked = bitmap.Lock();
 
-        var source = _presented!.GetPixels();
-        var rows = Math.Min(height, locked.Size.Height);
-        var bytes = Math.Min(width * 4, locked.RowBytes);
+        var info = new SKImageInfo(
+            locked.Size.Width, locked.Size.Height, SKColorType.Bgra8888, SKAlphaType.Premul);
 
-        for (var row = 0; row < rows; row++)
-        {
-            unsafe
-            {
-                Buffer.MemoryCopy(
-                    (byte*)source + row * _presented.RowBytes,
-                    (byte*)locked.Address + row * locked.RowBytes,
-                    locked.RowBytes,
-                    bytes);
-            }
-        }
+        using var surface = SKSurface.Create(info, locked.Address, locked.RowBytes)
+            ?? throw new InvalidOperationException("could not draw into the presented bitmap");
+
+        Presenter.Present(_art, surface.Canvas, View);
     }
 }

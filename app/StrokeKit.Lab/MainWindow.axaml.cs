@@ -170,6 +170,7 @@ public partial class MainWindow : Window
             + $"zoom {describe}   "
             + $"pan {_view.View.PanX:0},{_view.View.PanY:0} display px   "
             + $"render scaling {scale:0.####}   "
-            + $"viewport {_view.ViewportWidth}x{_view.ViewportHeight} display px";
+            + $"viewport {_view.ViewportWidth}x{_view.ViewportHeight} display px   "
+            + $"frame {_view.LastFrameMilliseconds:0.0} ms";
     }
 }
