@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
+using StrokeFieldGuide.Figures;
 using StrokeFieldGuide.Surfaces;
 using StrokeFieldGuide.Views;
 

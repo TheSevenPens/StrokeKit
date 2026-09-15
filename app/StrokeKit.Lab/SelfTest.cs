@@ -1,4 +1,5 @@
 using SkiaSharp;
+using StrokeFieldGuide.Figures;
 using StrokeFieldGuide.Surfaces;
 using StrokeFieldGuide.Views;
 

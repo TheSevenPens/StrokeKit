@@ -11,19 +11,19 @@ using StrokeFieldGuide.Views;
 namespace StrokeFieldGuide.Lab;
 
 /// <summary>
-/// Shows a surface, at a zoom and a pan, with the guarantees stage one exists to keep.
+/// Shows a surface, at a zoom and a pan, with the guarantees this part exists to keep.
 /// <para>
 /// The division of labour is the point. Every decision that affects a pixel — the scale, the
-/// offset, which sampling — is made by <see cref="Presenter"/>, which is a raster operation
-/// with no window behind it and is checked by reading pixels back. This control's only jobs
-/// are to work out how many physical pixels it has, hand that to the presenter, and put the
-/// result on screen without touching it.
+/// offset, which sampling — is made by <see cref="Presenter"/>, and every conversion between
+/// display pixels and the windowing system's units is made by <see cref="Presentation"/>.
+/// Both are raster or arithmetic with no window behind them, and both are checked. What is
+/// left here is the part that genuinely needs Avalonia: asking for the scaling, allocating a
+/// bitmap, and handing the result over.
 /// </para>
 /// <para>
-/// That last part is what the explicit <see cref="Control.Width"/> in device independent
-/// units below is for: sized so the presented bitmap maps one physical pixel to one physical
-/// pixel, Avalonia performs a copy rather than a scale, and nothing it does can soften what
-/// the presenter decided.
+/// A control is the one place in an application that cannot run without a screen, so a
+/// decision left inside one is a decision nobody can check. That is the reason for the
+/// split, and it is the reason this file is as short as it is.
 /// </para>
 /// </summary>
 public sealed class SurfaceView : Control
@@ -69,8 +69,7 @@ public sealed class SurfaceView : Control
 
     public void CentreOnSurface()
     {
-        var width = (int)Math.Round(Bounds.Width * RenderScale);
-        var height = (int)Math.Round(Bounds.Height * RenderScale);
+        var (width, height) = Presentation.PixelSize(Bounds.Width, Bounds.Height, RenderScale);
 
         SetView(View.PannedTo(
             (width - _art.PixelWidth * View.Zoom) / 2,
@@ -89,15 +88,14 @@ public sealed class SurfaceView : Control
     {
         if (!_dragging) return;
 
-        // The drag arrives in device independent units and the pan is in physical pixels, so
-        // the scale has to be applied here. Rounding happens inside the view: a pan that is
-        // not a whole number of physical pixels puts every surface pixel halfway between two
-        // display pixels, and the whole image softens without the zoom having changed.
+        // The drag arrives in device independent units and the pan is in physical pixels.
+        // Rounding happens inside the view.
         var moved = e.GetPosition(this) - _dragFrom;
+        var scale = RenderScale;
 
         SetView(View.PannedTo(
-            _panFrom.X + moved.X * RenderScale,
-            _panFrom.Y + moved.Y * RenderScale));
+            _panFrom.X + Presentation.PanFromDrag(moved.X, scale),
+            _panFrom.Y + Presentation.PanFromDrag(moved.Y, scale)));
     }
 
     protected override void OnPointerReleased(PointerReleasedEventArgs e)
@@ -112,8 +110,7 @@ public sealed class SurfaceView : Control
 
         // How many physical pixels this control actually occupies. Everything below is in
         // those; nothing below is in device independent units.
-        var width = (int)Math.Round(Bounds.Width * scale);
-        var height = (int)Math.Round(Bounds.Height * scale);
+        var (width, height) = Presentation.PixelSize(Bounds.Width, Bounds.Height, scale);
         if (width <= 0 || height <= 0) return;
 
         KeepTheCentreAcrossChanges(scale, width, height);
@@ -122,13 +119,15 @@ public sealed class SurfaceView : Control
         Presenter.Present(_art, _presentedCanvas!, View);
         CopyToShown(width, height);
 
-        // Drawn at its physical size divided by the scale, so one pixel of the presented
-        // bitmap covers exactly one physical pixel of the display. Any other destination
-        // rectangle here would hand Avalonia a resampling job and undo the presenter's work.
+        // One pixel of the presented bitmap over exactly one physical pixel of the display.
+        // Any other destination rectangle here — the control's own bounds, most temptingly —
+        // hands Avalonia a resampling job and undoes the presenter's work.
+        var (destinationWidth, destinationHeight) = Presentation.Destination(width, height, scale);
+
         context.DrawImage(
             _shown!,
             new Rect(0, 0, width, height),
-            new Rect(0, 0, width / scale, height / scale));
+            new Rect(0, 0, destinationWidth, destinationHeight));
     }
 
     /// <summary>
@@ -152,16 +151,7 @@ public sealed class SurfaceView : Control
         var first = _lastWidth == 0 && _lastHeight == 0;
         if (!first && scale == _lastScale && width == _lastWidth && height == _lastHeight) return;
 
-        if (!first)
-        {
-            // Where the old viewport's middle was, in surface coordinates, and where the new
-            // one's middle has to be for it to stay there.
-            var (surfaceX, surfaceY) = View.ToSurface(_lastWidth / 2.0, _lastHeight / 2.0);
-
-            View = View.PannedTo(
-                width / 2.0 - surfaceX * View.Zoom,
-                height / 2.0 - surfaceY * View.Zoom);
-        }
+        if (!first) View = Presentation.KeepingCentre(View, _lastWidth, _lastHeight, width, height);
 
         _lastScale = scale;
         _lastWidth = width;
