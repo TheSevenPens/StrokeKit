@@ -68,6 +68,47 @@ public readonly record struct View
 
     public View PannedTo(double x, double y) => new(Zoom, Math.Round(x), Math.Round(y));
 
+    /// <summary>This zoom, with the surface in the middle of a viewport of this size.</summary>
+    public static View Centred(double zoom, int surfaceWidth, int surfaceHeight,
+                               int viewportWidth, int viewportHeight)
+    {
+        // Snapped first, because the pan has to centre the surface at the zoom that will
+        // actually be used rather than the one that was asked for. Centring at 3.5 and then
+        // drawing at 4 leaves the surface a quarter of its width off to one side.
+        var snapped = Snap(zoom);
+
+        return At(
+            snapped,
+            (viewportWidth - surfaceWidth * snapped) / 2,
+            (viewportHeight - surfaceHeight * snapped) / 2);
+    }
+
+    /// <summary>
+    /// The view that shows the whole surface at once, centred.
+    /// <para>
+    /// Zooming <b>out</b> only. If the surface already fits, this is 1 and not more: a fit
+    /// that magnified would make a small surface fill a large window with blocks, which is
+    /// not what a reader asking to see the whole thing is asking for.
+    /// </para>
+    /// <para>
+    /// The fitting zoom is whatever ratio it takes and is almost never a whole number. That
+    /// is allowed, and it is the reason minification is the one case left free: below 1 a
+    /// surface pixel has no display pixel of its own, so there is no block structure that a
+    /// fractional ratio could make uneven.
+    /// </para>
+    /// </summary>
+    public static View Fitting(int surfaceWidth, int surfaceHeight, int viewportWidth, int viewportHeight)
+    {
+        if (surfaceWidth <= 0 || surfaceHeight <= 0 || viewportWidth <= 0 || viewportHeight <= 0)
+            return At(1);
+
+        var zoom = Math.Min(
+            1,
+            Math.Min(viewportWidth / (double)surfaceWidth, viewportHeight / (double)surfaceHeight));
+
+        return Centred(zoom, surfaceWidth, surfaceHeight, viewportWidth, viewportHeight);
+    }
+
     /// <summary>
     /// How the surface should be sampled at this zoom.
     /// <para>
