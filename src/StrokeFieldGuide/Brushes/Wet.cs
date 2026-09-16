@@ -44,6 +44,12 @@ public sealed class Wet : ILive
     private readonly InkTransform _transform;
     private readonly Surface? _wet;
 
+    /// <summary>The path so far, grown rather than rebuilt, so appending is amortised.</summary>
+    private readonly List<(double X, double Y)> _path = [];
+
+    private readonly Walk _walk;
+
+    private int _readings;
     private int _laid;
 
     public Wet(Brush brush, Surface target, InkTransform transform)
@@ -51,6 +57,7 @@ public sealed class Wet : ILive
         _brush = brush;
         _target = target;
         _transform = transform;
+        _walk = new Walk(brush.Spacing);
 
         // The stroke's own surface, the same size and logical size as the one it will meet,
         // so the transform means the same thing on both.
@@ -78,23 +85,29 @@ public sealed class Wet : ILive
     /// </summary>
     public int Extend(Stroke sofar)
     {
-        var stamps = _brush.Stamps(sofar);
-        var positions = _brush.Positions(sofar);
+        // Only the readings that are new, and only the segments they added. Recomputing the
+        // whole path's stamps each time would be linear per call and quadratic over the
+        // stroke -- the same shape as redrawing it, arrived at by recomputation rather than
+        // by compositing, and just as invisible until a stroke gets long.
+        for (; _readings < sofar.Count; _readings++)
+            _path.Add((sofar.Points[_readings].DesktopX, sofar.Points[_readings].DesktopY));
+
+        var placements = _walk.Advance(_path);
+        if (placements.Count == 0) return 0;
 
         var surface = _wet ?? _target;
         using var blender = _wet is null ? null : AlphaDarken.Blender();
 
-        var added = 0;
-
-        for (var index = _laid; index < stamps.Count; index++)
+        foreach (var placement in placements)
         {
-            Stamps.Draw(surface, _transform, stamps[index], positions[index].X, positions[index].Y, blender);
-            added++;
+            var stamp = new Stamp(_brush.DiameterAt(sofar, placement), _brush.Colour);
+
+            Stamps.Draw(surface, _transform, stamp, placement.X, placement.Y, blender);
         }
 
-        _laid = stamps.Count;
+        _laid += placements.Count;
 
-        return added;
+        return placements.Count;
     }
 
     /// <summary>

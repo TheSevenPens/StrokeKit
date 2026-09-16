@@ -51,22 +51,79 @@ public static class Spacing
     /// </para>
     /// </summary>
     public static IReadOnlyList<Placement> Placements(
-        IReadOnlyList<(double X, double Y)> path, double spacing)
+        IReadOnlyList<(double X, double Y)> path, double spacing) =>
+        new Walk(spacing).Advance(path);
+}
+
+/// <summary>
+/// The spacing walk, stopped part-way and resumed.
+/// <para>
+/// A stroke that is still arriving asks for its stamps once per reading. Walking the whole
+/// path each time is linear per call and therefore quadratic over the stroke -- which is the
+/// fault <c>incremental-drawing</c> is about, reached by a different route: the stamps are
+/// not redrawn, but they are recomputed.
+/// </para>
+/// <para>
+/// This is the same walk with its state kept between calls: how many readings have been
+/// consumed, and how far past the last stamp the path has travelled. Resuming is sound
+/// because the walk only ever reads forward, which is the same property that makes a
+/// stroke's stamps a prefix of the finished one's.
+/// </para>
+/// </summary>
+public sealed class Walk(double spacing)
+{
+    private readonly double _spacing =
+        spacing > 0 ? spacing : throw new ArgumentOutOfRangeException(nameof(spacing), "a spacing is positive");
+
+    /// <summary>How many readings have been consumed. The next segment starts here.</summary>
+    private int _consumed;
+
+    /// <summary>
+    /// How far past the last stamp the path has travelled. A segment shorter than what is
+    /// left to run adds to this and produces nothing, which is what keeps the spacing
+    /// constant across a corner rather than restarting at each one.
+    /// </summary>
+    private double _since;
+
+    private bool _started;
+
+    /// <summary>
+    /// How many segments this walk has looked at, over its whole life.
+    /// <para>
+    /// Here so that "resuming rather than restarting" is a number a check can compare against
+    /// arithmetic, rather than a claim about the shape of a loop. A walk that resumes reads
+    /// each segment once; one that restarts reads the whole path on every call.
+    /// </para>
+    /// </summary>
+    public long SegmentsRead { get; private set; }
+
+    /// <summary>
+    /// The stamps this path has that the walk has not already reported.
+    /// <para>
+    /// Takes the whole path so far and reads only the part it has not seen, so a caller with
+    /// a growing list need do nothing but pass it again.
+    /// </para>
+    /// </summary>
+    public IReadOnlyList<Placement> Advance(IReadOnlyList<(double X, double Y)> path)
     {
-        if (!(spacing > 0)) throw new ArgumentOutOfRangeException(nameof(spacing), "a spacing is positive");
-        if (path.Count == 0) return [];
+        var found = new List<Placement>();
 
-        var positions = new List<Placement> { new(path[0].X, path[0].Y, 0, 0) };
+        if (path.Count == 0) return found;
 
-        // How far past the last stamp we have travelled. A segment shorter than what is left
-        // to run adds to this and produces nothing, which is what keeps the spacing constant
-        // across a corner rather than restarting at each one.
-        var since = 0.0;
-
-        for (var index = 1; index < path.Count; index++)
+        if (!_started)
         {
-            var from = path[index - 1];
-            var to = path[index];
+            found.Add(new Placement(path[0].X, path[0].Y, 0, 0));
+
+            _started = true;
+            _consumed = 1;
+        }
+
+        for (; _consumed < path.Count; _consumed++)
+        {
+            var from = path[_consumed - 1];
+            var to = path[_consumed];
+
+            SegmentsRead++;
 
             var dx = to.X - from.X;
             var dy = to.Y - from.Y;
@@ -75,18 +132,18 @@ public static class Spacing
             if (length == 0) continue;
 
             var travelled = 0.0;
-            while (since + (length - travelled) >= spacing)
+            while (_since + (length - travelled) >= _spacing)
             {
-                travelled += spacing - since;
-                since = 0;
+                travelled += _spacing - _since;
+                _since = 0;
 
                 var at = travelled / length;
-                positions.Add(new Placement(from.X + dx * at, from.Y + dy * at, index - 1, at));
+                found.Add(new Placement(from.X + dx * at, from.Y + dy * at, _consumed - 1, at));
             }
 
-            since += length - travelled;
+            _since += length - travelled;
         }
 
-        return positions;
+        return found;
     }
 }

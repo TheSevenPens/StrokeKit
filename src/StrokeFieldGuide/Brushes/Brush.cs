@@ -85,7 +85,7 @@ public readonly record struct Brush(
     /// rate rather than of the stroke.
     /// </para>
     /// </summary>
-    private double DiameterAt(Stroke stroke, Placement placement)
+    public double DiameterAt(Stroke stroke, Placement placement)
     {
         if (Width is not { } width) return Diameter;
 
