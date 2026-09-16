@@ -11,6 +11,31 @@ namespace StrokeFieldGuide.Brushes;
 public readonly record struct Placement(double X, double Y, int Segment, double Fraction);
 
 /// <summary>
+/// What a brush's spacing is measured in.
+/// </summary>
+/// <remarks>
+/// <para>
+/// A mode rather than two properties, so that a brush cannot carry both an absolute spacing
+/// and a proportional one and leave which applies to be worked out.
+/// </para>
+/// </remarks>
+public enum SpacedBy
+{
+    /// <summary>The stroke's own units, the same gap the whole way along.</summary>
+    Distance,
+
+    /// <summary>
+    /// Multiples of the stamp's own diameter, so the gap grows and shrinks with the stamp.
+    /// <para>
+    /// The point of it is that <c>D/S</c> -- how many stamps cover a point, which is what
+    /// sets the alpha -- stays constant while the diameter varies. With
+    /// <see cref="Distance"/> a stroke that widens under pressure also darkens.
+    /// </para>
+    /// </summary>
+    Diameters,
+}
+
+/// <summary>
 /// Where along a path the stamps go.
 /// <para>
 /// By distance travelled, never by how many points arrived. The pen reports on a clock and
@@ -70,10 +95,42 @@ public static class Spacing
 /// stroke's stamps a prefix of the finished one's.
 /// </para>
 /// </summary>
-public sealed class Walk(double spacing)
+/// <param name="spacing">
+/// The gap between stamps. With <paramref name="gapAfter"/> supplied no stamp is placed by
+/// this value -- every gap including the first comes from the function -- but it is still
+/// required and still validated, because it is the number the caller was configured with and
+/// a brush whose spacing is zero is worth refusing at the point it is built.
+/// </param>
+/// <param name="gapAfter">
+/// The gap to leave after a stamp, or null for a constant spacing.
+/// <para>
+/// <b>Backward-looking on purpose.</b> A gap that depended on the next stamp's size would
+/// depend on where that stamp lands, which depends on the gap -- a fixed point, solved
+/// iteratively, for a difference no one can see. The gap after a stamp is decided by that
+/// stamp.
+/// </para>
+/// <para>
+/// Supplying this costs the walk its closed form. With a constant spacing, stamp <c>k</c>
+/// sits at <c>k * spacing</c> and is computed; with a varying one each stamp is the previous
+/// one plus a gap, which accumulates, and <c>stamp-spacing</c>'s boundary property goes with
+/// it. Nothing else about the walk changes -- in particular it still only reads forward, so
+/// the prefix property holds either way.
+/// </para>
+/// </param>
+public sealed class Walk(double spacing, Func<Placement, double>? gapAfter = null)
 {
     private readonly double _spacing =
         spacing > 0 ? spacing : throw new ArgumentOutOfRangeException(nameof(spacing), "a spacing is positive");
+
+    private readonly Func<Placement, double>? _gapAfter = gapAfter;
+
+    /// <summary>Where the next stamp goes, as a distance along the path.</summary>
+    /// <remarks>
+    /// Only used when the gap varies. With a constant spacing the same quantity is
+    /// <c>_laid * _spacing</c>, which is a multiplication rather than a running total and is
+    /// what keeps the count equal to the arithmetic.
+    /// </remarks>
+    private double _next;
 
     /// <summary>How many readings have been consumed. The next segment starts here.</summary>
     private int _consumed;
@@ -128,11 +185,13 @@ public sealed class Walk(double spacing)
 
         if (!_started)
         {
-            found.Add(new Placement(path[0].X, path[0].Y, 0, 0));
+            var first = new Placement(path[0].X, path[0].Y, 0, 0);
+            found.Add(first);
 
             _started = true;
             _consumed = 1;
             _laid = 1;
+            _next = _gapAfter is null ? _spacing : Gap(first);
         }
 
         for (; _consumed < path.Count; _consumed++)
@@ -150,24 +209,46 @@ public sealed class Walk(double spacing)
 
             var end = _travelled + length;
 
-            // Every stamp whose distance falls within this segment. The test is
-            // "k * spacing has been reached", which is the counting formula written out, so
-            // the count cannot disagree with it.
-            while (_laid * _spacing <= end)
+            // Every stamp whose distance falls within this segment. With a constant spacing
+            // the next stamp is at k * spacing, which is the counting formula written out, so
+            // the count cannot disagree with it. With a varying one it is the last stamp plus
+            // its gap, and there is no formula to agree with.
+            while (Next() <= end)
             {
-                // At most 1, because the loop only runs while k * spacing <= end, and
-                // (end - _travelled) / length is exactly 1. So a stamp cannot be placed past
-                // the segment it belongs to.
-                var at = (_laid * _spacing - _travelled) / length;
+                // At most 1, because the loop only runs while the next stamp is at or before
+                // the end of this segment, and (end - _travelled) / length is exactly 1. So a
+                // stamp cannot be placed past the segment it belongs to.
+                var at = (Next() - _travelled) / length;
 
-                found.Add(new Placement(from.X + dx * at, from.Y + dy * at, _consumed - 1, at));
+                var placement = new Placement(from.X + dx * at, from.Y + dy * at, _consumed - 1, at);
+                found.Add(placement);
 
                 _laid++;
+                if (_gapAfter is not null) _next += Gap(placement);
             }
 
             _travelled = end;
         }
 
         return found;
+    }
+
+    /// <summary>Where the next stamp goes, as a distance along the path.</summary>
+    private double Next() => _gapAfter is null ? _laid * _spacing : _next;
+
+    /// <summary>The gap after a stamp, refused if it would not advance the walk.</summary>
+    /// <remarks>
+    /// A gap of zero or less does not move, so the walk would stamp the same place forever.
+    /// Worth a throw rather than a clamp: a brush that asks for it has a diameter of zero or
+    /// a negative fraction, and both are questions for the caller.
+    /// </remarks>
+    private double Gap(Placement placement)
+    {
+        var gap = _gapAfter!(placement);
+
+        return gap > 0
+            ? gap
+            : throw new InvalidOperationException(
+                $"a gap is positive; the brush asked for {gap} after a stamp at ({placement.X}, {placement.Y})");
     }
 }

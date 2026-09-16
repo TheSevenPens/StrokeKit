@@ -69,12 +69,24 @@ public sealed class Wet : ILive
     private int _readings;
     private int _laid;
 
+    /// <summary>
+    /// The stroke as of the last <see cref="Extend"/>, for a brush whose gap depends on it.
+    /// <para>
+    /// Held rather than passed because the walk is built once, at pen-down, and the stroke it
+    /// has to ask about arrives later and keeps growing. Every version of it is a prefix of
+    /// the next, so the latest one answers for every stamp.
+    /// </para>
+    /// </summary>
+    private Stroke? _sofar;
+
     public Wet(Brush brush, Surface target, InkTransform transform)
     {
         _brush = brush;
         _target = target;
         _transform = transform;
-        _walk = new Walk(brush.Spacing);
+        _walk = brush.SpacedBy == SpacedBy.Distance
+            ? new Walk(brush.Spacing)
+            : new Walk(brush.Spacing, placement => _brush.GapAfter(_sofar!, placement));
 
         // The stroke's own surface, the same size and logical size as the one it will meet,
         // so the transform means the same thing on both.
@@ -106,6 +118,8 @@ public sealed class Wet : ILive
         // whole path's stamps each time would be linear per call and quadratic over the
         // stroke -- the same shape as redrawing it, arrived at by recomputation rather than
         // by compositing, and just as invisible until a stroke gets long.
+        _sofar = sofar;
+
         for (; _readings < sofar.Count; _readings++)
             _path.Add((sofar.Points[_readings].DesktopX, sofar.Points[_readings].DesktopY));
 

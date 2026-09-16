@@ -20,9 +20,12 @@ namespace StrokeFieldGuide.Brushes;
 /// </summary>
 /// <param name="Diameter">Across, in the stroke's own units. Not a radius.</param>
 /// <param name="Spacing">
-/// Distance between stamps, in the stroke's own units. A fraction of the diameter, because
-/// at a spacing equal to the diameter the stamps touch without overlapping and the stroke
-/// comes out as a row of circles.
+/// The gap between stamps, in whatever <paramref name="SpacedBy"/> says it is measured in.
+/// <para>
+/// In the stroke's own units by default. Keep it well under the diameter: at a spacing equal
+/// to the diameter the stamps touch without overlapping and the stroke comes out as a row of
+/// circles.
+/// </para>
 /// </param>
 /// <param name="Buildup">
 /// Whether the stamps meet the surface one at a time or the stroke does, once. Defaults to
@@ -33,13 +36,47 @@ namespace StrokeFieldGuide.Brushes;
 /// <paramref name="Diameter"/> across. Null by default, because the pages before this one
 /// are about everything a stroke does before its width varies.
 /// </param>
+/// <param name="SpacedBy">
+/// Whether <paramref name="Spacing"/> is a distance or a number of diameters. Distance by
+/// default, which is the simpler rule and the one every page before this one was measured
+/// against.
+/// </param>
 public readonly record struct Brush(
     double Diameter,
     SKColor Colour,
     double Spacing,
     Buildup Buildup = Buildup.PerStamp,
-    Width? Width = null)
+    Width? Width = null,
+    SpacedBy SpacedBy = SpacedBy.Distance)
 {
+    /// <summary>
+    /// The gap to leave after a stamp, which is the whole of what <see cref="SpacedBy"/>
+    /// decides.
+    /// </summary>
+    /// <remarks>
+    /// Measured from the stamp just laid rather than the one about to be. The next stamp's
+    /// diameter depends on where it lands, which depends on this gap, so asking it first is
+    /// a fixed point -- solved iteratively, for a difference below a pixel.
+    /// </remarks>
+    public double GapAfter(Stroke stroke, Placement placement) =>
+        SpacedBy == SpacedBy.Distance ? Spacing : Spacing * DiameterAt(stroke, placement);
+
+    /// <summary>The walk this brush needs: one constant gap, or a gap per stamp.</summary>
+    public Walk WalkAlong(Stroke stroke)
+    {
+        if (SpacedBy == SpacedBy.Distance) return new Walk(Spacing);
+
+        // Copied into locals first: a lambda in a struct cannot capture "this".
+        var brush = this;
+        var along = stroke;
+
+        return new Walk(Spacing, placement => brush.GapAfter(along, placement));
+    }
+
+    /// <summary>Where this brush's stamps go, and between which readings each one fell.</summary>
+    public IReadOnlyList<Placement> Placements(Stroke stroke) =>
+        WalkAlong(stroke).Advance([.. stroke.Points.Select(point => (point.DesktopX, point.DesktopY))]);
+
     /// <summary>
     /// Where the stamps go, in the stroke's own units, before anything is drawn.
     /// <para>
@@ -52,9 +89,11 @@ public readonly record struct Brush(
     {
         // The pen's own coordinates, in physical screen pixels. Turning those into the
         // surface's is the ink transform's job and happens per stamp, below.
-        var path = stroke.Points.Select(point => (point.DesktopX, point.DesktopY)).ToList();
+        var positions = new List<(double X, double Y)>();
 
-        return Brushes.Spacing.Along(path, Spacing);
+        foreach (var placement in Placements(stroke)) positions.Add((placement.X, placement.Y));
+
+        return positions;
     }
 
     /// <summary>
@@ -66,11 +105,9 @@ public readonly record struct Brush(
     /// </summary>
     public IReadOnlyList<Stamp> Stamps(Stroke stroke)
     {
-        var path = stroke.Points.Select(point => (point.DesktopX, point.DesktopY)).ToList();
-
         var stamps = new List<Stamp>();
 
-        foreach (var placement in Brushes.Spacing.Placements(path, Spacing))
+        foreach (var placement in Placements(stroke))
             stamps.Add(new Stamp(DiameterAt(stroke, placement), Colour));
 
         return stamps;
@@ -107,8 +144,7 @@ public readonly record struct Brush(
     /// </summary>
     public int Draw(Surface surface, InkTransform transform, Stroke stroke)
     {
-        var path = stroke.Points.Select(point => (point.DesktopX, point.DesktopY)).ToList();
-        var placements = Brushes.Spacing.Placements(path, Spacing);
+        var placements = Placements(stroke);
 
         var laid = new List<(double X, double Y, Stamp Stamp)>(placements.Count);
 
