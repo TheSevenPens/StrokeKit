@@ -1,4 +1,3 @@
-using WinPenKit;
 
 namespace StrokeFieldGuide.Strokes;
 
@@ -19,7 +18,7 @@ namespace StrokeFieldGuide.Strokes;
 /// would not. Required, because a fixture nobody can say that about is a fixture that grew
 /// out of whatever the last check happened to need.
 /// </param>
-public sealed record Fixture(string Name, string Exposes, IReadOnlyList<PenPoint> Readings)
+public sealed record Fixture(string Name, string Exposes, IReadOnlyList<Reading> Readings)
 {
     /// <summary>
     /// The stroke these readings make.
@@ -203,28 +202,28 @@ public static class Corpus
     /// The join point itself is dropped from the second run, because the two legs share it.
     /// </para>
     /// </remarks>
-    public static IReadOnlyList<PenPoint> Then(
-        IReadOnlyList<PenPoint> first, IReadOnlyList<PenPoint> second)
+    public static IReadOnlyList<Reading> Then(
+        IReadOnlyList<Reading> first, IReadOnlyList<Reading> second)
     {
         if (first.Count == 0) return second;
         if (second.Count == 0) return first;
 
         // The second run's own cadence, so continuing the clock does not also change the rate.
         var cadence = second.Count > 1
-            ? second[1].TimestampMicroseconds - second[0].TimestampMicroseconds
+            ? second[1].At - second[0].At
             : 8000;
 
-        var from = first[^1].TimestampMicroseconds + cadence;
+        var from = first[^1].At + cadence;
 
-        var joined = new List<PenPoint>(first);
+        var joined = new List<Reading>(first);
 
         for (var index = 1; index < second.Count; index++)
         {
             var reading = second[index];
 
             joined.Add(Synthetic.Reading(
-                reading.DesktopX, reading.DesktopY, reading.Pressure,
-                from + reading.TimestampMicroseconds - second[0].TimestampMicroseconds - cadence));
+                reading.X, reading.Y, reading.Pressure,
+                from + reading.At - second[0].At - cadence));
         }
 
         return joined;
@@ -234,18 +233,18 @@ public static class Corpus
     /// The same readings with a pressure profile applied along them, from 0 at the first to 1
     /// at the last.
     /// </summary>
-    private static IReadOnlyList<PenPoint> Pressed(
-        IReadOnlyList<PenPoint> readings, Func<double, uint> profile)
+    private static IReadOnlyList<Reading> Pressed(
+        IReadOnlyList<Reading> readings, Func<double, uint> profile)
     {
-        var pressed = new List<PenPoint>(readings.Count);
+        var pressed = new List<Reading>(readings.Count);
 
         for (var index = 0; index < readings.Count; index++)
         {
             var along = readings.Count > 1 ? index / (double)(readings.Count - 1) : 0;
 
             pressed.Add(Synthetic.Reading(
-                readings[index].DesktopX, readings[index].DesktopY,
-                profile(along), readings[index].TimestampMicroseconds));
+                readings[index].X, readings[index].Y,
+                profile(along), readings[index].At));
         }
 
         return pressed;

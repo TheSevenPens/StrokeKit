@@ -27,6 +27,53 @@ public readonly record struct InkTransform(double ScaleX, double ScaleY, double 
     /// </summary>
     public static InkTransform For(Surface surface) => new(surface.ScaleX, surface.ScaleY, 0, 0);
 
+    /// <summary>
+    /// The transform that marks the surface pixel a pen is over, for a pen whose readings
+    /// are in desktop pixels and a surface shown in a box at a zoom and a pan.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This is the hop from the device into the drawing, and it is the one an application has
+    /// to get right before any of the rest of this guide applies to it. There are two parts
+    /// and leaving out either produces a mark in the wrong place with nothing reported.
+    /// </para>
+    /// <para>
+    /// <b>Where the box is.</b> A session reports positions on the desktop, so the box's own
+    /// top left has to come off them. Leave this out and every mark is displaced by the
+    /// distance from the desktop's corner to the box's -- the same displacement everywhere,
+    /// which is <see cref="RegistrationFault.Origin"/>.
+    /// </para>
+    /// <para>
+    /// <b>Where the view has got to.</b> What is left is a position in the box, and a box
+    /// shows a surface through a view, which has a pan and a zoom. The pan is not zero and
+    /// does not stay put: it is recentred whenever the box changes size or the window moves
+    /// to a monitor at a different scaling. Leave this out and the mark lands where the
+    /// surface would have been had the reader never resized anything -- again the same
+    /// displacement everywhere, so the two omissions look alike and are told apart by
+    /// whether the displacement changes when the window is resized.
+    /// </para>
+    /// <para>
+    /// The zoom divides rather than multiplies, because this runs the opposite way to the
+    /// view: the view takes a surface pixel to a display pixel, and a pen arrives as a
+    /// display pixel wanting the surface pixel under it. Magnify twice and a hand moving two
+    /// display pixels has moved one surface pixel.
+    /// </para>
+    /// </remarks>
+    /// <param name="zoom">Display pixels per surface pixel, from the view.</param>
+    /// <param name="panX">Where the surface's top left sits in the box, in display pixels.</param>
+    /// <param name="boxLeft">The box's top left on the desktop, in physical pixels.</param>
+    public static InkTransform ForPenOver(
+        double zoom, double panX, double panY, double boxLeft, double boxTop)
+    {
+        if (!(zoom > 0)) throw new ArgumentOutOfRangeException(nameof(zoom), "a zoom is positive");
+
+        return new(
+            1 / zoom,
+            1 / zoom,
+            -(boxLeft + panX) / zoom,
+            -(boxTop + panY) / zoom);
+    }
+
     /// <summary>Logical position to pixel position.</summary>
     public (double X, double Y) ToSurface(double x, double y) =>
         (OriginX + x * ScaleX, OriginY + y * ScaleY);

@@ -130,7 +130,7 @@ public static class Taper
         // draws it.
         if (along.Length == 0)
         {
-            var still = new Placement(stroke.Points[0].DesktopX, stroke.Points[0].DesktopY, 0, 0);
+            var still = new Placement(stroke.Points[0].X, stroke.Points[0].Y, 0, 0);
             var across = brush.DiameterAt(stroke, still);
 
             pieces.Add(new Piece(still.X, still.Y, across, still.X, still.Y, across,
@@ -227,8 +227,8 @@ public static class Taper
 
                 _upTo[index] = _upTo[index - 1]
                     + Math.Sqrt(
-                        Math.Pow(to.DesktopX - from.DesktopX, 2)
-                        + Math.Pow(to.DesktopY - from.DesktopY, 2));
+                        Math.Pow(to.X - from.X, 2)
+                        + Math.Pow(to.Y - from.Y, 2));
             }
         }
 
@@ -249,8 +249,8 @@ public static class Taper
             var fraction = span > 0 ? Math.Clamp((distance - _upTo[segment]) / span, 0, 1) : 0;
 
             return new Placement(
-                from.DesktopX + (to.DesktopX - from.DesktopX) * fraction,
-                from.DesktopY + (to.DesktopY - from.DesktopY) * fraction,
+                from.X + (to.X - from.X) * fraction,
+                from.Y + (to.Y - from.Y) * fraction,
                 segment, fraction);
         }
 
@@ -295,8 +295,8 @@ public static class Taper
             var a = _stroke.Points[from];
             var b = _stroke.Points[to];
 
-            var dx = b.DesktopX - a.DesktopX;
-            var dy = b.DesktopY - a.DesktopY;
+            var dx = b.X - a.X;
+            var dy = b.Y - a.Y;
             var length = Math.Sqrt(dx * dx + dy * dy);
 
             return length == 0 ? null : (dx / length, dy / length);

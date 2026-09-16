@@ -1,4 +1,3 @@
-using WinPenKit;
 
 namespace StrokeFieldGuide.Strokes;
 
@@ -28,9 +27,19 @@ public static class Synthetic
     /// </summary>
     public const uint Pressing = 512;
 
-    /// <summary>One reading, at a position, with the pressure that decides contact.</summary>
-    public static PenPoint Reading(double x, double y, uint pressure = Pressing, long at = 0) =>
-        new(x, y, (int)x, (int)y, pressure, 0, 90, 0, 0, 0, 0, 0, 0, 0, InputApi.WintabSystem, at);
+    /// <summary>
+    /// One reading, at a position, with the pressure that decides contact.
+    /// <para>
+    /// The position is in the ink's units and nothing else, which is what changed when
+    /// <see cref="Strokes.Reading"/> took over from the device's point type here. Until then
+    /// this method packed its arguments into fields documented as physical screen pixels and
+    /// the brush engine read them back out as the drawing's own. That held for every fixture
+    /// in this guide -- because every fixture is made here -- and stopped holding for the
+    /// first application that drew with a real pen.
+    /// </para>
+    /// </summary>
+    public static Reading Reading(double x, double y, uint pressure = Pressing, long at = 0) =>
+        new(x, y, pressure, at);
 
     /// <summary>
     /// Readings evenly spaced along a straight line, the first at the start and the last at
@@ -42,12 +51,12 @@ public static class Synthetic
     /// wrong for two reasons at once.
     /// </para>
     /// </summary>
-    public static IReadOnlyList<PenPoint> Line(
+    public static IReadOnlyList<Reading> Line(
         double fromX, double fromY, double toX, double toY, int readings, long microsecondsApart = 8000)
     {
         if (readings < 2) throw new ArgumentOutOfRangeException(nameof(readings), "a line has two ends");
 
-        var points = new List<PenPoint>(readings);
+        var points = new List<Reading>(readings);
 
         for (var index = 0; index < readings; index++)
         {
@@ -66,13 +75,13 @@ public static class Synthetic
     /// Readings along an arc, for when a straight line would hide a fault that only a change
     /// of direction produces.
     /// </summary>
-    public static IReadOnlyList<PenPoint> Arc(
+    public static IReadOnlyList<Reading> Arc(
         double centreX, double centreY, double radius, double fromDegrees, double toDegrees, int readings,
         long microsecondsApart = 8000)
     {
         if (readings < 2) throw new ArgumentOutOfRangeException(nameof(readings), "an arc has two ends");
 
-        var points = new List<PenPoint>(readings);
+        var points = new List<Reading>(readings);
 
         for (var index = 0; index < readings; index++)
         {
@@ -98,10 +107,10 @@ public static class Synthetic
     /// first dot somebody draws.
     /// </para>
     /// </summary>
-    public static IReadOnlyList<PenPoint> Tap(double x, double y, long at = 0) => [Reading(x, y, at: at)];
+    public static IReadOnlyList<Reading> Tap(double x, double y, long at = 0) => [Reading(x, y, at: at)];
 
     /// <summary>
     /// A hover reading: off the tablet, so it separates strokes rather than joining them.
     /// </summary>
-    public static PenPoint Hover(double x, double y, long at = 0) => Reading(x, y, 0, at);
+    public static Reading Hover(double x, double y, long at = 0) => Reading(x, y, 0, at);
 }

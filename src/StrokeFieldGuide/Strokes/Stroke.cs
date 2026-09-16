@@ -1,9 +1,8 @@
-using WinPenKit;
 
 namespace StrokeFieldGuide.Strokes;
 
 /// <summary>
-/// The pen points of one continuous contact, in the order they arrived.
+/// The readings of one continuous contact, in the order they arrived.
 /// <para>
 /// Abstract, and deliberately so. A stroke has no width, no colour and no shape: it is the
 /// readings and nothing more. What a brush engine needs from one in order to draw it is a
@@ -19,7 +18,7 @@ namespace StrokeFieldGuide.Strokes;
 /// </summary>
 public sealed class Stroke
 {
-    public Stroke(IReadOnlyList<PenPoint> points)
+    public Stroke(IReadOnlyList<Reading> points)
     {
         if (points.Count == 0) throw new ArgumentException("a stroke has at least one point", nameof(points));
 
@@ -27,13 +26,13 @@ public sealed class Stroke
     }
 
     /// <summary>In the order they arrived. Never reordered, never deduplicated.</summary>
-    public IReadOnlyList<PenPoint> Points { get; }
+    public IReadOnlyList<Reading> Points { get; }
 
     public int Count => Points.Count;
 
-    public PenPoint First => Points[0];
+    public Reading First => Points[0];
 
-    public PenPoint Last => Points[^1];
+    public Reading Last => Points[^1];
 
     /// <summary>
     /// How long the contact lasted, in microseconds.
@@ -44,11 +43,11 @@ public sealed class Stroke
     /// short stroke the same reading, and so does a backend that supplies no clock at all.
     /// </para>
     /// </summary>
-    public long DurationMicroseconds => Last.TimestampMicroseconds - First.TimestampMicroseconds;
+    public long DurationMicroseconds => Last.At - First.At;
 }
 
 /// <summary>
-/// Turning a stream of pen points into strokes.
+/// Turning a stream of readings into strokes.
 /// </summary>
 public static class Strokes
 {
@@ -62,10 +61,10 @@ public static class Strokes
     /// measured rather than assumed.
     /// </para>
     /// </summary>
-    public static bool InContact(PenPoint point) => point.Pressure > 0;
+    public static bool InContact(Reading point) => point.Pressure > 0;
 
     /// <summary>
-    /// Every stroke in a stream of pen points, in order.
+    /// Every stroke in a stream of readings, in order.
     /// <para>
     /// An application is given readings while the pen merely hovers as well as while it
     /// draws, and the two arrive on the same stream. A stroke is a contiguous run of
@@ -74,10 +73,10 @@ public static class Strokes
     /// of them.
     /// </para>
     /// </summary>
-    public static IReadOnlyList<Stroke> From(IEnumerable<PenPoint> points)
+    public static IReadOnlyList<Stroke> From(IEnumerable<Reading> points)
     {
         var found = new List<Stroke>();
-        var current = new List<PenPoint>();
+        var current = new List<Reading>();
 
         foreach (var point in points)
         {

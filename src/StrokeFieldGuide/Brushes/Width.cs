@@ -10,8 +10,8 @@ namespace StrokeFieldGuide.Brushes;
 /// </param>
 /// <param name="AtFullPressure">The diameter at the device's full scale.</param>
 /// <param name="Range">
-/// The device's full-scale pressure. Stated here because <b>a pen point does not carry
-/// it</b> -- <c>PenPoint.Pressure</c> is a raw number and the range is the session's, so a
+/// The device's full-scale pressure. Stated here because <b>a reading does not carry
+/// it</b> -- <c>Reading.Pressure</c> is a raw number and the range is the session's, so a
 /// brush that assumes 1024 draws at an eighth strength on a device reporting 8192 and at
 /// full strength on one reporting 127.
 /// <para>

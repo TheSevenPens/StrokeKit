@@ -5,7 +5,7 @@ namespace StrokeFieldGuide.Strokes;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b><c>PenPoint.Pressure</c> is a <c>uint</c>, so the obvious interpolation is wrong in one
+/// <b><c>Reading.Pressure</c> is a <c>uint</c>, so the obvious interpolation is wrong in one
 /// direction only.</b> Written inline, <c>from + (to - from) * fraction</c> subtracts before
 /// anything becomes a <c>double</c>: for a falling pressure the difference wraps to about
 /// 4.29e9, the result saturates, and every stamp comes out at full width.

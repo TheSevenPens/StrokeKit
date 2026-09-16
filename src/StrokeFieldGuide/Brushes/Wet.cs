@@ -121,7 +121,7 @@ public sealed class Wet : ILive
         _sofar = sofar;
 
         for (; _readings < sofar.Count; _readings++)
-            _path.Add((sofar.Points[_readings].DesktopX, sofar.Points[_readings].DesktopY));
+            _path.Add((sofar.Points[_readings].X, sofar.Points[_readings].Y));
 
         var placements = _walk.Advance(_path);
         if (placements.Count == 0) return 0;

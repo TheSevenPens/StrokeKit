@@ -91,8 +91,8 @@ public readonly record struct Brush(
         var from = stroke.Points[placement.Segment];
         var to = stroke.Points[Math.Min(placement.Segment + 1, stroke.Count - 1)];
 
-        var dx = to.DesktopX - from.DesktopX;
-        var dy = to.DesktopY - from.DesktopY;
+        var dx = to.X - from.X;
+        var dy = to.Y - from.Y;
 
         if (dx == 0 && dy == 0) return nib.Degrees;
 
@@ -151,7 +151,7 @@ public readonly record struct Brush(
 
     /// <summary>Where this brush's stamps go, and between which readings each one fell.</summary>
     public IReadOnlyList<Placement> Placements(Stroke stroke) =>
-        WalkAlong(stroke).Advance([.. stroke.Points.Select(point => (point.DesktopX, point.DesktopY))]);
+        WalkAlong(stroke).Advance([.. stroke.Points.Select(point => (point.X, point.Y))]);
 
     /// <summary>
     /// Where the stamps go, in the stroke's own units, before anything is drawn.
