@@ -32,9 +32,14 @@ public partial class MainWindow : Window
         _view = new SurfaceView(_art);
         _view.ViewChanged += (_, _) => ShowState();
 
+        // The frame time belongs to the frame that just finished, so it is read after one
+        // rather than before the next. Everything else is known as soon as the view is set.
+        _view.Rendered += (_, _) => ShowStatus();
+
         this.FindControl<Panel>("Host")!.Children.Add(_view);
 
         this.FindControl<Button>("DrawDemo")!.Click += (_, _) => { Demo.Draw(_art); Redraw(); };
+        this.FindControl<Button>("DrawStroke")!.Click += (_, _) => { SyntheticStrokes.Draw(_art); Redraw(); };
         this.FindControl<Button>("ClearIt")!.Click += (_, _) => { EmptyDocument(); Redraw(); };
 
         this.FindControl<Button>("ZoomIn")!.Click += (_, _) => _view.SetView(_view.View.In());
@@ -49,17 +54,15 @@ public partial class MainWindow : Window
         this.FindControl<ScrollBar>("ScrollY")!.ValueChanged += (sender, _) =>
             Scrolled(horizontally: false, ((ScrollBar)sender!).Value);
 
-        // Tunnelling, so the space bar reaches this before whichever button happens to hold
-        // the focus treats it as a press. In an application with a canvas, the space bar
-        // belongs to the canvas.
-        AddHandler(KeyDownEvent, (_, e) => SpaceIs(e, true), RoutingStrategies.Tunnel);
-        AddHandler(KeyUpEvent, (_, e) => SpaceIs(e, false), RoutingStrategies.Tunnel);
-
         // A key released while the window is not in front never arrives, and the cursor would
         // stay a hand until the reader pressed space again just to let it go.
         Deactivated += (_, _) => _view.HandPanning = false;
 
         Opened += (_, _) => { Demo.Draw(_art); _view.FitSurface(); _view.Focus(); ShowState(); };
+
+        // The document is this window's, so this window releases it. A surface holds an
+        // SKSurface, which holds pixels that are not the garbage collector's to hurry.
+        Closed += (_, _) => _art.Dispose();
     }
 
     /// <summary>
@@ -78,14 +81,6 @@ public partial class MainWindow : Window
     {
         _view.InvalidateVisual();
         ShowState();
-    }
-
-    private void SpaceIs(KeyEventArgs e, bool down)
-    {
-        if (e.Key != Key.Space) return;
-
-        _view.HandPanning = down;
-        e.Handled = true;
     }
 
     private void Scrolled(bool horizontally, double value)

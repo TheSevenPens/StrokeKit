@@ -6,6 +6,7 @@
     <DockPanel>
         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="10,10,10,6" Spacing="6">
             <Button x:Name="DrawDemo" Content="Draw demo" />
+            <Button x:Name="DrawStroke" Content="Draw strokes" />
             <Button x:Name="ClearIt" Content="Clear" />
             <Border Width="12" />
             <Button x:Name="ZoomOut" Content="−" Width="34" />

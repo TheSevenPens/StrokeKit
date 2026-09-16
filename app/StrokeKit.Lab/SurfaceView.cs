@@ -49,6 +49,9 @@ public sealed class SurfaceView : Control
 
     private bool _handPanning;
 
+    /// <summary>Whether a "the frame is done" notification is already on its way.</summary>
+    private bool _reporting;
+
     public SurfaceView(Surface art)
     {
         _art = art;
@@ -79,11 +82,18 @@ public sealed class SurfaceView : Control
     public double LastFrameMilliseconds { get; private set; }
 
     /// <summary>
-    /// Whether the space bar is held.
+    /// Whether the space bar is held, while this control has the focus.
     /// <para>
     /// A drag pans either way for now, because there is no other tool competing for it. The
     /// key is here because it is the idiom a reader already has, and because the moment a
-    /// brush exists the drag belongs to the brush and this becomes the only way to pan.
+    /// brush exists the drag belongs to the brush.
+    /// </para>
+    /// <para>
+    /// Handled by the canvas rather than by the window. Intercepting it at the window was
+    /// simpler and took the space bar away from every other control in the application: a
+    /// focused button could not be pressed with it, and a text field -- the moment there is
+    /// one -- could not have a space typed into it. A canvas may own the space bar while the
+    /// reader is working on the canvas, and not otherwise.
     /// </para>
     /// </summary>
     public bool HandPanning
@@ -102,6 +112,23 @@ public sealed class SurfaceView : Control
     public double RenderScale => TopLevel.GetTopLevel(this)?.RenderScaling ?? 1;
 
     public event EventHandler? ViewChanged;
+
+    /// <summary>
+    /// Raised after a frame, so that anything reporting on the frame reports on the one just
+    /// drawn.
+    /// <para>
+    /// <see cref="ViewChanged"/> fires when the view is set, which is before the frame that
+    /// results from it, so a status line refreshed from that alone shows the time the
+    /// <em>previous</em> frame took. During a drag every reading is one frame stale, which is
+    /// a small lie in the one number a reader would use to judge whether a frame is cheap.
+    /// </para>
+    /// <para>
+    /// Posted and coalesced: raising it inside the render pass is what crashed the
+    /// application the first time, and one notification per frame is enough however many
+    /// times the view changed to produce it.
+    /// </para>
+    /// </summary>
+    public event EventHandler? Rendered;
 
     public void SetView(View view)
     {
@@ -123,6 +150,38 @@ public sealed class SurfaceView : Control
         var (width, height) = Presentation.PixelSize(Bounds.Width, Bounds.Height, RenderScale);
 
         SetView(View.Fitting(_art.PixelWidth, _art.PixelHeight, width, height));
+    }
+
+    protected override void OnKeyDown(KeyEventArgs e)
+    {
+        if (e.Key == Key.Space)
+        {
+            HandPanning = true;
+            e.Handled = true;
+            return;
+        }
+
+        base.OnKeyDown(e);
+    }
+
+    protected override void OnKeyUp(KeyEventArgs e)
+    {
+        if (e.Key == Key.Space)
+        {
+            HandPanning = false;
+            e.Handled = true;
+            return;
+        }
+
+        base.OnKeyUp(e);
+    }
+
+    /// <summary>The release of a key held while the focus moves away never arrives here.</summary>
+    protected override void OnLostFocus(FocusChangedEventArgs e)
+    {
+        base.OnLostFocus(e);
+
+        HandPanning = false;
     }
 
     protected override void OnPointerPressed(PointerPressedEventArgs e)
@@ -183,15 +242,13 @@ public sealed class SurfaceView : Control
 
         var scale = RenderScale;
 
-        // How many physical pixels this control actually occupies. Everything below is in
-        // those; nothing below is in device independent units.
-        var (width, height) = Presentation.PixelSize(Bounds.Width, Bounds.Height, scale);
+        // Everything below is in physical pixels, and the viewport was worked out during
+        // layout rather than here. A frame renders a state that was already prepared: this
+        // method changes nothing that anything else reads.
+        var width = ViewportWidth;
+        var height = ViewportHeight;
         if (width <= 0 || height <= 0) return;
 
-        ViewportWidth = width;
-        ViewportHeight = height;
-
-        KeepTheCentreAcrossChanges(scale, width, height);
         EnsurePresentationBitmap(width, height);
 
         PresentInto(_shown!);
@@ -207,6 +264,60 @@ public sealed class SurfaceView : Control
             new Rect(0, 0, destinationWidth, destinationHeight));
 
         LastFrameMilliseconds = clock.Elapsed.TotalMilliseconds;
+
+        if (_reporting) return;
+
+        _reporting = true;
+
+        Dispatcher.UIThread.Post(() =>
+        {
+            _reporting = false;
+            Rendered?.Invoke(this, EventArgs.Empty);
+        });
+    }
+
+    /// <summary>
+    /// Layout is where the viewport's size is settled, so it is where the view is adjusted
+    /// to it -- before the frame that shows the result, rather than during it.
+    /// </summary>
+    protected override Size ArrangeOverride(Size finalSize)
+    {
+        var arranged = base.ArrangeOverride(finalSize);
+
+        AdjustToViewport(finalSize);
+
+        return arranged;
+    }
+
+    /// <summary>
+    /// A scaling change need not come with a layout change: the same window on a monitor
+    /// with a different scaling is the same size in device independent units and a different
+    /// number of pixels. Without this the viewport would only be noticed at the next resize.
+    /// </summary>
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+
+        if (TopLevel.GetTopLevel(this) is { } top) top.ScalingChanged += ScalingChanged;
+    }
+
+    private void ScalingChanged(object? sender, EventArgs e)
+    {
+        AdjustToViewport(Bounds.Size);
+        InvalidateVisual();
+    }
+
+    private void AdjustToViewport(Size finalSize)
+    {
+        var scale = RenderScale;
+        var (width, height) = Presentation.PixelSize(finalSize.Width, finalSize.Height, scale);
+
+        if (width <= 0 || height <= 0) return;
+
+        ViewportWidth = width;
+        ViewportHeight = height;
+
+        KeepTheCentreAcrossChanges(scale, width, height);
     }
 
     /// <summary>
@@ -236,13 +347,29 @@ public sealed class SurfaceView : Control
         _lastWidth = width;
         _lastHeight = height;
 
-        // Posted rather than raised. This runs inside the render pass, and the handler
-        // writes the status text, which invalidates that text block -- and Avalonia refuses
-        // a visual invalidated while it is rendering. Raising it directly crashed the
-        // application on the first resize with "Visual was invalidated during the render
-        // pass". Guarding against re-invalidating this control was not enough, because the
-        // handler touches a different one.
+        // Posted rather than raised. The handler writes the status text, which invalidates
+        // that text block, and this runs inside a layout pass -- and used to run inside the
+        // render pass, where raising it directly crashed the application on the first resize
+        // with "Visual was invalidated during the render pass". Guarding against
+        // re-invalidating this control was not enough, because the handler touches another.
         Dispatcher.UIThread.Post(() => ViewChanged?.Invoke(this, EventArgs.Empty));
+    }
+
+    /// <summary>
+    /// Releases the bitmap this control allocated, and only that.
+    /// <para>
+    /// The surface belongs to whoever passed it in and is not this control's to dispose. A
+    /// control that freed what it was lent would be a worse bug than the leak.
+    /// </para>
+    /// </summary>
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        if (TopLevel.GetTopLevel(this) is { } top) top.ScalingChanged -= ScalingChanged;
+
+        base.OnDetachedFromVisualTree(e);
+
+        _shown?.Dispose();
+        _shown = null;
     }
 
     private void EnsurePresentationBitmap(int width, int height)

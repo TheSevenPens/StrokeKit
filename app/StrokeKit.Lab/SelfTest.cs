@@ -1,5 +1,7 @@
 using SkiaSharp;
+using StrokeFieldGuide.Brushes;
 using StrokeFieldGuide.Figures;
+using StrokeFieldGuide.Strokes;
 using StrokeFieldGuide.Surfaces;
 using StrokeFieldGuide.Views;
 
@@ -37,6 +39,7 @@ public static class SelfTest
                      ("a frame does not read the surface per pixel", FrameCost),
                      ("a run of resizes keeps the middle of the viewport", ResizeKeepsTheMiddle),
                      ("the demo figure lands inside the surface", DemoFits),
+                     ("a synthetic stroke makes the mark arithmetic predicts", TheSlice),
                  })
         {
             var problem = check.Run();
@@ -300,6 +303,48 @@ public static class SelfTest
             if (Math.Abs(now - was) > 0.5)
                 return $"{name} moved the middle from surface x={was} to x={now}";
         }
+
+        return null;
+    }
+
+    /// <summary>
+    /// The whole path, from made-up pen points to pixels, against what three numbers say it
+    /// should be.
+    /// <para>
+    /// The only check here that is not about the presentation. It is here because it is the
+    /// one that says the parts fit together: every stage below it has its own page and its
+    /// own checks, and all of them can be right while the composition is wrong.
+    /// </para>
+    /// </summary>
+    private static string? TheSlice()
+    {
+        const double length = 120;
+        const double diameter = 9;
+        const double spacing = 4;
+        const double fromX = 40;
+        const double atY = 60;
+
+        using var art = Surface.Create(240, 120, 1);
+        art.Canvas.Clear(SKColors.Transparent);
+
+        var strokes = Strokes.Strokes.From(Synthetic.Line(fromX, atY, fromX + length, atY, 41));
+        if (strokes.Count != 1) return $"{strokes.Count} strokes came out of one contact";
+
+        var brush = new Brush(diameter, SKColors.Black, spacing);
+        var laid = brush.Draw(art, InkTransform.For(art), strokes[0]);
+
+        // Worked out from the three numbers above, not from the pipeline.
+        var expected = (int)Math.Floor(length / spacing) + 1;
+        if (laid != expected) return $"{laid} stamps where {expected} were predicted";
+
+        var bounds = art.InkBounds();
+        if (bounds is null) return "the stroke left no mark";
+
+        var (left, _, right, _) = bounds.Value;
+        var across = (expected - 1) * spacing + diameter;
+
+        if (Math.Abs(right - left - across) > 2)
+            return $"the mark is {right - left} across where {across} was predicted";
 
         return null;
     }

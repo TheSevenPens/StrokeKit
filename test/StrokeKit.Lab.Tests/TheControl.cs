@@ -53,6 +53,35 @@ public class TheControl
         return new Point(origin.X + 40 + dx, origin.Y + 40 + dy);
     }
 
+    // ------------------------------------------------------------------------ the buttons
+
+    [AvaloniaFact]
+    public void Draw_strokes_puts_a_brush_engine_mark_on_the_document()
+    {
+        // The button is wiring, and wiring is what a control-level test is for: every stage
+        // it reaches is checked on its own page, and none of that says the button calls them.
+        var (window, canvas) = At(1);
+
+        canvas.Surface.Canvas.Clear(SkiaSharp.SKColors.Transparent);
+        Assert.Null(canvas.Surface.InkBounds());
+
+        window.FindControl<Button>("DrawStroke")!.RaiseEvent(
+            new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+        Render(window);
+
+        var bounds = canvas.Surface.InkBounds();
+        Assert.True(bounds is not null, "the button drew nothing");
+
+        // Inside the document, and using most of it: the strokes are laid out across the
+        // surface rather than piled in a corner.
+        var (left, top, right, bottom) = bounds!.Value;
+
+        Assert.True(left >= 0 && top >= 0, $"the mark starts at ({left}, {top})");
+        Assert.True(right <= canvas.Surface.PixelWidth, $"the mark reaches {right}");
+        Assert.True(bottom <= canvas.Surface.PixelHeight, $"the mark reaches {bottom}");
+        Assert.True(right - left > 500, $"the mark is only {right - left} across");
+    }
+
     // ------------------------------------------------------------------ keyboard routing
 
     [AvaloniaFact]
@@ -70,15 +99,17 @@ public class TheControl
     }
 
     [AvaloniaFact]
-    public void Space_does_not_press_the_button_that_has_the_focus()
+    public void Space_belongs_to_the_button_that_has_the_focus_instead()
     {
-        // The reason the handler tunnels. With the focus on a button, an untunnelled space
-        // would activate it, and in this application that means zooming rather than panning.
+        // The canvas owns the space bar while the reader is working on the canvas, and not
+        // otherwise. Handling it at the window was simpler and took the space bar away from
+        // every other control: a focused button could not be pressed with it, and a text
+        // field -- the moment there is one -- could not have a space typed into it.
         var (window, canvas) = At(1);
 
         var zoomOut = window.FindControl<Button>("ZoomOut")!;
         zoomOut.Focus();
-        Dispatcher.UIThread.RunJobs();
+        Render(window);
 
         Assert.True(zoomOut.IsFocused, "the button never took the focus, so this proves nothing");
 
@@ -86,17 +117,34 @@ public class TheControl
 
         window.KeyPress(Key.Space, RawInputModifiers.None, PhysicalKey.Space, " ");
         window.KeyRelease(Key.Space, RawInputModifiers.None, PhysicalKey.Space, " ");
-        Dispatcher.UIThread.RunJobs();
+        Render(window);
 
-        Assert.Equal(before, canvas.View.Zoom);
+        Assert.True(canvas.View.Zoom < before, "space did not reach the focused button");
+        Assert.False(canvas.HandPanning, "space put the canvas in hand mode from another control");
+    }
 
-        // And the button is not simply dead: Enter, which nothing intercepts, works.
-        window.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, "\r");
-        window.KeyRelease(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, "\r");
-        Dispatcher.UIThread.RunJobs();
+    [AvaloniaFact]
+    public void Clicking_the_canvas_gives_the_space_bar_back_to_it()
+    {
+        // Which is what makes the rule above workable: a reader who wants to pan is already
+        // pointing at the canvas.
+        var (window, canvas) = At(1);
 
-        Assert.True(canvas.View.Zoom < before,
-            "Enter did not reach the focused button either, so nothing here is about space");
+        window.FindControl<Button>("ZoomOut")!.Focus();
+        Render(window);
+
+        var from = Inside(canvas, window);
+        window.MouseDown(from, MouseButton.Left);
+        window.MouseUp(from, MouseButton.Left);
+        Render(window);
+
+        Assert.True(canvas.IsFocused, "clicking the canvas did not focus it");
+
+        window.KeyPress(Key.Space, RawInputModifiers.None, PhysicalKey.Space, " ");
+        Assert.True(canvas.HandPanning);
+
+        window.KeyRelease(Key.Space, RawInputModifiers.None, PhysicalKey.Space, " ");
+        Assert.False(canvas.HandPanning);
     }
 
     // ------------------------------------------------------------------------- the drag
@@ -226,6 +274,35 @@ public class TheControl
 
         var now = canvas.View.ToSurface(canvas.ViewportWidth / 2.0, canvas.ViewportHeight / 2.0);
 
+        Assert.Equal(was.X, now.X, 0.5);
+        Assert.Equal(was.Y, now.Y, 0.5);
+    }
+
+    [AvaloniaFact]
+    public void A_scaling_change_and_back_again_ends_where_it_started()
+    {
+        // Monitors are left as well as arrived at. A transition that is right in one
+        // direction and lossy in the other drifts every time a window is moved back and
+        // forth, which is a thing people do all day.
+        var (window, canvas) = At(1);
+
+        canvas.SetView(View.At(2, -400, -200));
+        Render(window);
+
+        var was = canvas.View.ToSurface(canvas.ViewportWidth / 2.0, canvas.ViewportHeight / 2.0);
+
+        foreach (var scaling in new[] { 2.25, 1.5, 1.0, 2.0, 1.0 })
+        {
+            window.SetRenderScaling(scaling);
+            Render(window);
+
+            Assert.True(Math.Abs(canvas.RenderScale - scaling) < 1e-9,
+                $"the window reports a scaling of {canvas.RenderScale} rather than {scaling}");
+        }
+
+        var now = canvas.View.ToSurface(canvas.ViewportWidth / 2.0, canvas.ViewportHeight / 2.0);
+
+        // Back at the scaling it started from, so back at the viewport it started with.
         Assert.Equal(was.X, now.X, 0.5);
         Assert.Equal(was.Y, now.Y, 0.5);
     }
