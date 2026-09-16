@@ -79,11 +79,27 @@ public sealed class Walk(double spacing)
     private int _consumed;
 
     /// <summary>
-    /// How far past the last stamp the path has travelled. A segment shorter than what is
-    /// left to run adds to this and produces nothing, which is what keeps the spacing
-    /// constant across a corner rather than restarting at each one.
+    /// How much path the walk has consumed, in the path's own units.
+    /// <para>
+    /// A segment shorter than what is left to run adds to this and produces nothing, which is
+    /// what keeps the spacing constant across a corner rather than restarting at each one.
+    /// </para>
     /// </summary>
-    private double _since;
+    private double _travelled;
+
+    /// <summary>
+    /// How many stamps have been laid, which is also the index of the next one -- the stamp
+    /// at the start of the path being stamp zero.
+    /// </summary>
+    /// <remarks>
+    /// <b>Stamp <c>k</c> belongs at distance <c>k * spacing</c>, and that is computed rather
+    /// than accumulated.</b> The distance to the next stamp used to be reached by adding and
+    /// subtracting a spacing at a time, which drifts: a length-1 path at a spacing of 0.2 got
+    /// five stamps where <c>floor(L/S) + 1</c> says six, because the last comparison saw
+    /// 0.19999999999999996 and refused it. One multiplication has no such history. It also
+    /// makes the loop condition the formula itself, rather than something that agrees with it.
+    /// </remarks>
+    private long _laid;
 
     private bool _started;
 
@@ -116,6 +132,7 @@ public sealed class Walk(double spacing)
 
             _started = true;
             _consumed = 1;
+            _laid = 1;
         }
 
         for (; _consumed < path.Count; _consumed++)
@@ -131,17 +148,24 @@ public sealed class Walk(double spacing)
 
             if (length == 0) continue;
 
-            var travelled = 0.0;
-            while (_since + (length - travelled) >= _spacing)
-            {
-                travelled += _spacing - _since;
-                _since = 0;
+            var end = _travelled + length;
 
-                var at = travelled / length;
+            // Every stamp whose distance falls within this segment. The test is
+            // "k * spacing has been reached", which is the counting formula written out, so
+            // the count cannot disagree with it.
+            while (_laid * _spacing <= end)
+            {
+                // At most 1, because the loop only runs while k * spacing <= end, and
+                // (end - _travelled) / length is exactly 1. So a stamp cannot be placed past
+                // the segment it belongs to.
+                var at = (_laid * _spacing - _travelled) / length;
+
                 found.Add(new Placement(from.X + dx * at, from.Y + dy * at, _consumed - 1, at));
+
+                _laid++;
             }
 
-            _since += length - travelled;
+            _travelled = end;
         }
 
         return found;
