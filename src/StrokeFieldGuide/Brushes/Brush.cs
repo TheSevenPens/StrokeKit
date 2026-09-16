@@ -91,6 +91,19 @@ public readonly record struct Brush(
         var from = stroke.Points[placement.Segment];
         var to = stroke.Points[Math.Min(placement.Segment + 1, stroke.Count - 1)];
 
+        if (nib.Held == Held.ToTheLean)
+        {
+            // Interpolated as a vector, not as a lean and an azimuth. Straight-line
+            // interpolation of the two numbers goes the long way round the seam -- halfway
+            // between 350 and 10 comes out at 180 -- and interpolates towards an azimuth
+            // that means nothing whenever the pen is near upright. See Leaning.
+            var leaning = Leaning.Of(from).Towards(Leaning.Of(to), placement.Fraction);
+
+            // An upright pen has no direction, and nib.Degrees is the honest answer when the
+            // measurement is absent rather than whatever number arrived in its place.
+            return leaning.Azimuth is { } azimuth ? azimuth.Degrees + nib.Degrees : nib.Degrees;
+        }
+
         var dx = to.X - from.X;
         var dy = to.Y - from.Y;
 

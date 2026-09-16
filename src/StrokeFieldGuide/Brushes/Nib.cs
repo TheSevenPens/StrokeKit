@@ -15,6 +15,25 @@ public enum Held
     /// across.
     /// </remarks>
     ToThePath,
+
+    /// <summary>
+    /// Turned the way the pen is leaning, which is what a real nib does.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A nib turns because the hand turns, not because the stroke does. The reading already
+    /// carries which way the hand has tipped the pen -- its azimuth -- so this is one field
+    /// rather than an arctangent over a pair of tilts whose sign convention differs between
+    /// devices.
+    /// </para>
+    /// <para>
+    /// <b>An upright pen has no azimuth</b>, and a device reporting one there is reporting
+    /// nothing. The angle then falls back to <see cref="Nib.Degrees"/>, which is the same
+    /// thing <see cref="Fixed"/> would have given -- the honest answer when the measurement
+    /// is absent, rather than whatever number arrived in its place.
+    /// </para>
+    /// </remarks>
+    ToTheLean,
 }
 
 /// <summary>
