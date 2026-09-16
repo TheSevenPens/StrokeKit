@@ -68,10 +68,18 @@ public static class Presentation
     /// Holding the middle is a choice rather than the only answer -- holding the top left
     /// would also be stable -- and it is the one that matches what a reader is looking at.
     /// </para>
+    /// <para>
+    /// Read from the camera rather than from the pan, which is the whole of the difference
+    /// between this working once and this working a hundred times. Recovering the centre from
+    /// a pan that has already been rounded, and then rounding the answer again, throws away a
+    /// fraction of a pixel per call and throws it away in one direction. Measured before this
+    /// was fixed: a hundred one-pixel resizes moved a centred surface fifty pixels, while one
+    /// resize to the same final size moved it not at all.
+    /// </para>
     /// </summary>
     public static View KeepingCentre(View view, int oldWidth, int oldHeight, int newWidth, int newHeight)
     {
-        var (surfaceX, surfaceY) = view.ToSurface(oldWidth / 2.0, oldHeight / 2.0);
+        var (surfaceX, surfaceY) = view.ToSurfaceExactly(oldWidth / 2.0, oldHeight / 2.0);
 
         return view.PannedTo(
             newWidth / 2.0 - surfaceX * view.Zoom,

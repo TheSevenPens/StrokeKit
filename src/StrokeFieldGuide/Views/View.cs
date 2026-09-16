@@ -15,23 +15,41 @@ namespace StrokeFieldGuide.Views;
 /// </summary>
 public readonly record struct View
 {
-    private View(double zoom, double panX, double panY)
+    private View(double zoom, double cameraX, double cameraY)
     {
         Zoom = zoom;
-        PanX = panX;
-        PanY = panY;
+        CameraX = cameraX;
+        CameraY = cameraY;
     }
 
     /// <summary>Display pixels per surface pixel. Above 1 it is a whole number; below 1 it is free.</summary>
     public double Zoom { get; }
 
-    /// <summary>Where the surface's top left sits, in display pixels. Always whole numbers.</summary>
-    public double PanX { get; }
+    /// <summary>
+    /// Where the view actually is, in display pixels, to whatever precision it was put there.
+    /// <para>
+    /// Not what anything draws with or measures against -- that is <see cref="PanX"/>, which
+    /// is this rounded. The exact number is carried because the rounding has to happen once,
+    /// at the end, rather than once per adjustment.
+    /// </para>
+    /// <para>
+    /// Rounding at every adjustment and then reading the rounded value back as the view's
+    /// position loses a fraction of a pixel each time, and the losses add up in one
+    /// direction. A hundred one-pixel resizes moved a centred surface fifty pixels off
+    /// centre, while a single resize to the same size did not move it at all.
+    /// </para>
+    /// </summary>
+    public double CameraX { get; }
 
-    public double PanY { get; }
+    public double CameraY { get; }
+
+    /// <summary>Where the surface's top left sits, in display pixels. Always a whole number.</summary>
+    public double PanX => Math.Round(CameraX);
+
+    public double PanY => Math.Round(CameraY);
 
     public static View At(double zoom, double panX = 0, double panY = 0) =>
-        new(Snap(zoom), Math.Round(panX), Math.Round(panY));
+        new(Snap(zoom), panX, panY);
 
     /// <summary>
     /// The nearest legal zoom.
@@ -60,13 +78,24 @@ public readonly record struct View
     /// block of that many display pixels on a side.
     /// </para>
     /// </summary>
-    public View In() => new(Zoom < 1 ? NextUpFromMinified(Zoom) : Zoom + 1, PanX, PanY);
+    public View In() => new(Zoom < 1 ? NextUpFromMinified(Zoom) : Zoom + 1, CameraX, CameraY);
 
-    public View Out() => new(Zoom <= 1 ? Zoom / 2 : Zoom - 1, PanX, PanY);
+    public View Out() => new(Zoom <= 1 ? Zoom / 2 : Zoom - 1, CameraX, CameraY);
 
     private static double NextUpFromMinified(double zoom) => Math.Min(1, zoom * 2);
 
-    public View PannedTo(double x, double y) => new(Zoom, Math.Round(x), Math.Round(y));
+    public View PannedTo(double x, double y) => new(Zoom, x, y);
+
+    /// <summary>
+    /// Which surface position a display position is over, before the pan is rounded.
+    /// <para>
+    /// For carrying the view's own state forward, and for nothing else. A question about
+    /// which pixel something is on wants <see cref="ToSurface"/>, which answers from the pan
+    /// that was actually drawn with.
+    /// </para>
+    /// </summary>
+    public (double X, double Y) ToSurfaceExactly(double displayX, double displayY) =>
+        ((displayX - CameraX) / Zoom, (displayY - CameraY) / Zoom);
 
     /// <summary>This zoom, with the surface in the middle of a viewport of this size.</summary>
     public static View Centred(double zoom, int surfaceWidth, int surfaceHeight,
