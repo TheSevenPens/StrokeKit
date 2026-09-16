@@ -47,8 +47,30 @@ public readonly record struct Brush(
     double Spacing,
     Buildup Buildup = Buildup.PerStamp,
     Width? Width = null,
-    SpacedBy SpacedBy = SpacedBy.Distance)
+    SpacedBy SpacedBy = SpacedBy.Distance,
+    Flow? Flow = null)
 {
+    /// <summary>
+    /// The colour a stamp is laid in, which is <see cref="Colour"/> unless the pen decides
+    /// its alpha.
+    /// </summary>
+    /// <remarks>
+    /// Only the alpha varies. A brush whose hue followed the pen is a different kind of
+    /// control and would want saying so; what a pressure-driven ink does is put down more or
+    /// less of the same colour.
+    /// </remarks>
+    public SKColor ColourAt(Stroke stroke, Placement placement)
+    {
+        if (Flow is not { } flow) return Colour;
+
+        var from = stroke.Points[placement.Segment];
+        var to = stroke.Points[Math.Min(placement.Segment + 1, stroke.Count - 1)];
+
+        var pressure = Pressures.Between(from.Pressure, to.Pressure, placement.Fraction);
+
+        return Colour.WithAlpha(flow.AlphaFor((uint)Math.Round(Math.Max(0, pressure))));
+    }
+
     /// <summary>
     /// The gap to leave after a stamp, which is the whole of what <see cref="SpacedBy"/>
     /// decides.
@@ -108,7 +130,7 @@ public readonly record struct Brush(
         var stamps = new List<Stamp>();
 
         foreach (var placement in Placements(stroke))
-            stamps.Add(new Stamp(DiameterAt(stroke, placement), Colour));
+            stamps.Add(new Stamp(DiameterAt(stroke, placement), ColourAt(stroke, placement)));
 
         return stamps;
     }
@@ -149,7 +171,10 @@ public readonly record struct Brush(
         var laid = new List<(double X, double Y, Stamp Stamp)>(placements.Count);
 
         foreach (var placement in placements)
-            laid.Add((placement.X, placement.Y, new Stamp(DiameterAt(stroke, placement), Colour)));
+        {
+            laid.Add((placement.X, placement.Y,
+                new Stamp(DiameterAt(stroke, placement), ColourAt(stroke, placement))));
+        }
 
         if (Buildup == Buildup.PerStamp)
         {

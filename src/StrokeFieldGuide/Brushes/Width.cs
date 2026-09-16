@@ -37,12 +37,6 @@ public readonly record struct Width(
     /// the curve shapes the fraction, and the endpoints map it to a diameter. Anything that
     /// shaped before normalising would be reading a curve against raw counts.
     /// </remarks>
-    public double For(uint pressure)
-    {
-        if (Range == 0) throw new InvalidOperationException("a pressure range is not zero");
-
-        var fraction = Math.Clamp(pressure / (double)Range, 0, 1);
-
-        return AtNoPressure + (AtFullPressure - AtNoPressure) * Curve.Of(fraction);
-    }
+    public double For(uint pressure) =>
+        Driven.Between(AtNoPressure, AtFullPressure, Range, Curve, pressure);
 }
