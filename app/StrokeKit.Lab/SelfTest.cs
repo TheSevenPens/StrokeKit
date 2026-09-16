@@ -136,22 +136,57 @@ public static class SelfTest
         return null;
     }
 
+    /// <summary>
+    /// One dark row in every <paramref name="spacing"/>, minified, against the coverage that
+    /// arithmetic says should survive.
+    /// <para>
+    /// Not alternating single lines, which is what this used to use. At a spacing of two, a
+    /// 2x2 bilinear window at quarter size straddles one dark row and one light one and
+    /// averages them correctly whether or not there is a mipmap under it -- so that pattern
+    /// cannot tell a filtered minification from an unfiltered one, and this check could not.
+    /// </para>
+    /// </summary>
+    private static (double Mean, int Spread) Minified(int spacing, double zoom)
+    {
+        const int size = 128;
+
+        using var art = Surface.CreateExactly(size, size, size, size);
+        using var paint = new SKPaint { Color = SKColors.Black, IsAntialias = false };
+        for (var y = 0; y < size; y += spacing) art.Canvas.DrawRect(SKRect.Create(0, y, size, 1), paint);
+
+        var across = (int)Math.Round(size * zoom);
+        using var display = Surface.CreateExactly(across, across, across, across);
+        Presenter.Present(art, display, View.At(zoom));
+
+        var alphas = Enumerable.Range(1, across - 2)
+            .Select(row => (int)display.ReadStored(across / 2, row).Alpha)
+            .ToList();
+
+        return (alphas.Average(), alphas.Max() - alphas.Min());
+    }
+
     private static string? NoAliasing()
     {
-        // Alternating one-pixel lines. Point sampling takes every fourth row and returns
-        // solid black or nothing depending on where it lands; averaging returns an even grey.
-        using var art = Surface.CreateExactly(64, 64, 64, 64);
-        using var paint = new SKPaint { Color = SKColors.Black, IsAntialias = false };
-        for (var y = 0; y < 64; y += 2) art.Canvas.DrawRect(SKRect.Create(0, y, 64, 1), paint);
+        // The expected average is arithmetic, not observation: a minified pixel covers
+        // 1/zoom source rows, one row in `spacing` is dark, so the average alpha is
+        // 255 / spacing whatever the zoom.
+        foreach (var (spacing, zoom) in new[] { (4, 0.25), (8, 0.25), (8, 0.125), (16, 0.125) })
+        {
+            var (mean, _) = Minified(spacing, zoom);
+            var expected = 255.0 / spacing;
 
-        using var display = Surface.CreateExactly(16, 16, 16, 16);
-        Presenter.Present(art, display, View.At(0.25));
+            if (Math.Abs(mean - expected) > 4)
+            {
+                return $"one dark row in {spacing} at {zoom} averaged {mean:0.0} where {expected:0.0} "
+                    + "should have survived";
+            }
+        }
 
-        var alphas = Enumerable.Range(0, 16).Select(row => display.ReadStored(4, row).Alpha).ToList();
-        var spread = alphas.Max() - alphas.Min();
+        // A ratio that is not a power of two, where the failure is banding rather than loss.
+        var (awkward, spread) = Minified(8, 0.3);
 
-        if (spread > 8) return $"rows range from {alphas.Min()} to {alphas.Max()}, which is banding";
-        if (alphas.Max() == 0 || alphas.Min() == 255) return "the pattern was lost rather than averaged";
+        if (Math.Abs(awkward - 255.0 / 8) > 4) return $"an awkward ratio averaged {awkward:0.0}";
+        if (spread > 140) return $"rows at an awkward ratio spread by {spread}, which is banding";
 
         return null;
     }
