@@ -25,6 +25,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\StrokeFieldGuide\StrokeFieldGuide.csproj" />
+    <ProjectReference Include="..\StrokeFieldGuide.Canvas\StrokeFieldGuide.Canvas.csproj" />
   </ItemGroup>
 
 </Project>

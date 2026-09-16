@@ -95,7 +95,7 @@ public static class SyntheticStrokes
     /// Readings along a line whose pressure rises to the midpoint and falls again, which is
     /// the shape of an ordinary stroke and exercises the interpolation in both directions.
     /// </summary>
-    private static IReadOnlyList<WinPenKit.PenPoint> Swell(
+    private static IReadOnlyList<Reading> Swell(
         double fromX, double fromY, double toX, double toY, uint atEnds, uint atMiddle)
     {
         var midX = (fromX + toX) / 2;
@@ -111,11 +111,11 @@ public static class SyntheticStrokes
     }
 
     /// <summary>Readings along a line with the pressure ramped from one value to another.</summary>
-    private static IReadOnlyList<WinPenKit.PenPoint> Ramp(
+    private static IReadOnlyList<Reading> Ramp(
         double fromX, double fromY, double toX, double toY, uint fromPressure, uint toPressure)
     {
         const int readings = 60;
-        var points = new List<WinPenKit.PenPoint>(readings);
+        var points = new List<Reading>(readings);
 
         for (var index = 0; index < readings; index++)
         {
@@ -131,7 +131,7 @@ public static class SyntheticStrokes
     }
 
     private static void Lay(
-        Surface art, InkTransform transform, Brush brush, IReadOnlyList<WinPenKit.PenPoint> readings)
+        Surface art, InkTransform transform, Brush brush, IReadOnlyList<Reading> readings)
     {
         foreach (var stroke in Strokes.Strokes.From(readings)) brush.Draw(art, transform, stroke);
     }
