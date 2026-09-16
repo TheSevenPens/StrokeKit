@@ -36,6 +36,15 @@ namespace StrokeFieldGuide.Brushes;
 /// <paramref name="Diameter"/> across. Null by default, because the pages before this one
 /// are about everything a stroke does before its width varies.
 /// </param>
+/// <param name="Engine">
+/// Which engine lays the marks down. Stamps by default, which is what every page before the
+/// taper was measured against.
+/// <para>
+/// A named choice on the brush rather than an object, so that a stroke can record what drew
+/// it: an engine holds a path and a paint, and a record of something finished should not be
+/// holding a live one.
+/// </para>
+/// </param>
 /// <param name="SpacedBy">
 /// Whether <paramref name="Spacing"/> is a distance or a number of diameters. Distance by
 /// default, which is the simpler rule and the one every page before this one was measured
@@ -48,7 +57,8 @@ public readonly record struct Brush(
     Buildup Buildup = Buildup.PerStamp,
     Width? Width = null,
     SpacedBy SpacedBy = SpacedBy.Distance,
-    Flow? Flow = null)
+    Flow? Flow = null,
+    Engine Engine = Engine.Stamps)
 {
     /// <summary>
     /// The colour a stamp is laid in, which is <see cref="Colour"/> unless the pen decides
@@ -166,6 +176,11 @@ public readonly record struct Brush(
     /// </summary>
     public int Draw(Surface surface, InkTransform transform, Stroke stroke)
     {
+        // Dispatched once, here, rather than branched on further down. The two engines share
+        // a brush and share nothing else: one asks where stamps go, the other asks where the
+        // path turns, and below this line everything is the stamping engine's.
+        if (Engine == Engine.Taper) return Taper.Draw(surface, transform, this, stroke);
+
         var placements = Placements(stroke);
 
         var laid = new List<(double X, double Y, Stamp Stamp)>(placements.Count);
