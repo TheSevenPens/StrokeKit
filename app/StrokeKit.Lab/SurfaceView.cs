@@ -35,6 +35,7 @@ public sealed class SurfaceView : Control
     private WriteableBitmap? _shown;
 
     private bool _dragging;
+    private int _dragPointer;
     private Point _dragFrom;
     private (double X, double Y) _panFrom;
 
@@ -54,6 +55,9 @@ public sealed class SurfaceView : Control
         ClipToBounds = true;
         Focusable = true;
     }
+
+    /// <summary>The surface being shown. Exposed so a test can compare a frame against it.</summary>
+    public Surface Surface => _art;
 
     public View View { get; private set; } = View.At(1);
 
@@ -125,7 +129,13 @@ public sealed class SurfaceView : Control
     {
         Focus();
 
+        // The left button, and only it. Every press starting a drag means a right-click
+        // menu or a barrel button pans the canvas out from under whatever it was for, and
+        // the pan a second pointer contributes is measured from the first one's origin.
+        if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
+
         _dragging = true;
+        _dragPointer = e.Pointer.Id;
         _dragFrom = e.GetPosition(this);
         _panFrom = (View.PanX, View.PanY);
         e.Pointer.Capture(this);
@@ -133,7 +143,7 @@ public sealed class SurfaceView : Control
 
     protected override void OnPointerMoved(PointerEventArgs e)
     {
-        if (!_dragging) return;
+        if (!_dragging || e.Pointer.Id != _dragPointer) return;
 
         // The drag arrives in device independent units and the pan is in physical pixels.
         // Rounding happens inside the view.
@@ -147,9 +157,25 @@ public sealed class SurfaceView : Control
 
     protected override void OnPointerReleased(PointerReleasedEventArgs e)
     {
-        _dragging = false;
+        EndGesture();
         e.Pointer.Capture(null);
     }
+
+    /// <summary>
+    /// A pointer can be taken away mid-gesture: another control captures it, the window
+    /// loses activation, a tablet leaves proximity. None of those arrive as a release.
+    /// </summary>
+    protected override void OnPointerCaptureLost(PointerCaptureLostEventArgs e) => EndGesture();
+
+    /// <summary>
+    /// Ends a drag that is in progress, without waiting for a release that may never come.
+    /// <para>
+    /// Left running, the next move the control sees is measured from where the pointer went
+    /// down, so a gesture interrupted and resumed elsewhere moves the drawing by the whole
+    /// distance between the two -- which reads as the canvas jumping for no reason.
+    /// </para>
+    /// </summary>
+    public void EndGesture() => _dragging = false;
 
     public override void Render(Avalonia.Media.DrawingContext context)
     {
