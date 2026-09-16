@@ -36,6 +36,14 @@ namespace StrokeFieldGuide.Brushes;
 /// <paramref name="Diameter"/> across. Null by default, because the pages before this one
 /// are about everything a stroke does before its width varies.
 /// </param>
+/// <param name="Hardness">
+/// How much of a stamp is at full strength before its edge begins, from 0 to 1. Hard by
+/// default, which is what every page before this one was measured against.
+/// <para>
+/// Read by the stamping engine only. An outlined stroke has one edge for the whole mark
+/// rather than one per stamp, and softening it is a different piece of work.
+/// </para>
+/// </param>
 /// <param name="Engine">
 /// Which engine lays the marks down. Stamps by default, which is what every page before the
 /// taper was measured against.
@@ -58,7 +66,8 @@ public readonly record struct Brush(
     Width? Width = null,
     SpacedBy SpacedBy = SpacedBy.Distance,
     Flow? Flow = null,
-    Engine Engine = Engine.Stamps)
+    Engine Engine = Engine.Stamps,
+    double Hardness = 1)
 {
     /// <summary>
     /// The colour a stamp is laid in, which is <see cref="Colour"/> unless the pen decides
@@ -140,7 +149,7 @@ public readonly record struct Brush(
         var stamps = new List<Stamp>();
 
         foreach (var placement in Placements(stroke))
-            stamps.Add(new Stamp(DiameterAt(stroke, placement), ColourAt(stroke, placement)));
+            stamps.Add(new Stamp(DiameterAt(stroke, placement), ColourAt(stroke, placement), Hardness));
 
         return stamps;
     }
@@ -188,7 +197,7 @@ public readonly record struct Brush(
         foreach (var placement in placements)
         {
             laid.Add((placement.X, placement.Y,
-                new Stamp(DiameterAt(stroke, placement), ColourAt(stroke, placement))));
+                new Stamp(DiameterAt(stroke, placement), ColourAt(stroke, placement), Hardness)));
         }
 
         if (Buildup == Buildup.PerStamp)

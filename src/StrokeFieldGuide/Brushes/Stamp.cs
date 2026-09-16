@@ -17,9 +17,20 @@ namespace StrokeFieldGuide.Brushes;
 /// commonest way a brush comes out twice the size it should be, and the fault looks like a
 /// scaling problem rather than a naming one.
 /// </param>
-public readonly record struct Stamp(double Diameter, SKColor Colour)
+/// <param name="Hardness">
+/// How much of the stamp is at full strength before its edge begins, from 0 to 1.
+/// <para>
+/// 1 is the hard nib every page before this one used: full strength to the rim, and an edge
+/// only as wide as antialiasing makes it. Below 1 the stamp holds full strength out to
+/// <c>Hardness</c> of its radius and falls to nothing at the rim.
+/// </para>
+/// </param>
+public readonly record struct Stamp(double Diameter, SKColor Colour, double Hardness = 1)
 {
     public double Radius => Diameter / 2;
+
+    /// <summary>True when the stamp has an edge worth drawing with a gradient.</summary>
+    public bool IsSoft => Hardness < 1;
 }
 
 public static class Stamps
@@ -48,6 +59,28 @@ public static class Stamps
             IsAntialias = true,
             Style = SKPaintStyle.Fill,
         };
+
+        // A soft stamp is a different shape, not a fainter one: full strength out to its
+        // hardness and falling to nothing at the rim. Drawn as a shader rather than by
+        // stacking rings, because a ring is a mark of its own and would composite like one.
+        using var falloff = stamp.IsSoft
+            ? SKShader.CreateRadialGradient(
+                new SKPoint((float)centreX, (float)centreY), (float)radius,
+                [stamp.Colour, stamp.Colour.WithAlpha(0)],
+                [(float)Math.Clamp(stamp.Hardness, 0, 1), 1],
+                SKShaderTileMode.Clamp)
+            : null;
+
+        if (falloff is not null)
+        {
+            paint.Shader = falloff;
+
+            // The paint's own alpha multiplies whatever the shader produces, and the shader
+            // is already carrying the stamp's. Left as it was, a quarter-alpha stamp came out
+            // at a sixteenth -- faint enough to read as a soft brush being subtle rather than
+            // as the colour being applied twice.
+            paint.Color = stamp.Colour.WithAlpha(255);
+        }
 
         // Given one, the stamp composites by it rather than by source-over. That is the whole
         // difference between a stroke that darkens itself and one that does not.

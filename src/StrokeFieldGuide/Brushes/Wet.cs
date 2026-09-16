@@ -132,7 +132,8 @@ public sealed class Wet : ILive
         foreach (var placement in placements)
         {
             var stamp = new Stamp(
-                    _brush.DiameterAt(sofar, placement), _brush.ColourAt(sofar, placement));
+                    _brush.DiameterAt(sofar, placement), _brush.ColourAt(sofar, placement),
+                    _brush.Hardness);
 
             Stamps.Draw(surface, _transform, stamp, placement.X, placement.Y, blender);
         }
