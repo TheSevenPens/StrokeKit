@@ -31,6 +31,23 @@ public interface ILive : IDisposable
 /// very different things from it, and neither of them is "draw the stroke again".
 /// </para>
 /// <para>
+/// <b>Wet</b> is borrowed from paint: ink that is down and visible but not yet dry, and so is
+/// still a thing in its own right rather than part of the picture. Under
+/// <see cref="Buildup.OncePerStroke"/> it names <c>_wet</c>, the stroke's own surface, which
+/// lives only between pen-down and pen-up:
+/// </para>
+/// <code>
+/// pen down       create the wet layer, matching the target in size and scale
+/// each reading   new stamps  -&gt; wet layer, alpha-darkened against each other
+///                what is shown  =  target, with the wet layer drawn over it
+/// pen up         wet layer  -&gt; target, once, then cleared
+/// </code>
+/// <para>
+/// The target is untouched until <see cref="Finish"/>. Under <see cref="Buildup.PerStamp"/>
+/// there is no wet layer -- <c>_wet</c> is null and stamps go straight onto the target -- so
+/// every branch on <c>_wet</c> below is really a branch on which buildup is in force.
+/// </para>
+/// <para>
 /// Under <see cref="Buildup.PerStamp"/> there is nothing to hold. Each new stamp is
 /// composited onto the surface as it arrives and the surface is correct after every reading.
 /// Under <see cref="Buildup.OncePerStroke"/> the stroke's own surface has to stay alive until
