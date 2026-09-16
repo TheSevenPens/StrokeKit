@@ -19,15 +19,30 @@ namespace StrokeFieldGuide.Brushes;
 /// instead of being answered wrongly somewhere quiet.
 /// </para>
 /// </param>
-public readonly record struct Width(double AtNoPressure, double AtFullPressure, uint Range)
+/// <param name="Curve">
+/// How hard the brush answers across the range. Linear by default, which is the response every
+/// page written before this one was measured against.
+/// <para>
+/// Between the endpoints rather than replacing them, so that a width which <b>narrows</b> as
+/// the pen presses is still expressible: the curve runs 0 to 1 and cannot fall, and
+/// <c>Width(24, 6, range)</c> narrows because its endpoints say so.
+/// </para>
+/// </param>
+public readonly record struct Width(
+    double AtNoPressure, double AtFullPressure, uint Range, Response Curve = default)
 {
     /// <summary>The diameter for a raw reading, clamped to the range it was measured in.</summary>
+    /// <remarks>
+    /// The order the contract states: the reading is normalised against the device's range,
+    /// the curve shapes the fraction, and the endpoints map it to a diameter. Anything that
+    /// shaped before normalising would be reading a curve against raw counts.
+    /// </remarks>
     public double For(uint pressure)
     {
         if (Range == 0) throw new InvalidOperationException("a pressure range is not zero");
 
         var fraction = Math.Clamp(pressure / (double)Range, 0, 1);
 
-        return AtNoPressure + (AtFullPressure - AtNoPressure) * fraction;
+        return AtNoPressure + (AtFullPressure - AtNoPressure) * Curve.Of(fraction);
     }
 }
