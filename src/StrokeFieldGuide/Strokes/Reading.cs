@@ -87,6 +87,30 @@ public readonly record struct Reading(
     /// </remarks>
     public bool InContact => Pressure > 0;
 
+    /// <summary>
+    /// The barrel rotation as an angle to draw at, which runs the other way.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The device's twist increases anticlockwise on the surface.</b> Reported on 16
+    /// September 2026 by the owner of the tablet, watching a dial turn the wrong way while
+    /// rolling the pen: a barrel rolled clockwise under the hand made the needle go
+    /// anticlockwise.
+    /// </para>
+    /// <para>
+    /// So this is <see cref="Twist"/> negated, and it is a named property rather than a minus
+    /// sign at each use for the same reason <see cref="Leaning.Direction"/> is: a device's
+    /// number and an angle to draw at are two different things, and the place they are
+    /// reconciled should be findable. Whichever of them a caller wants, it should have to say
+    /// which.
+    /// </para>
+    /// <para>
+    /// Only the <b>sense</b> is corrected. Where the barrel's zero sits is whatever the device
+    /// calls zero, and nothing here claims it points anywhere in particular.
+    /// </para>
+    /// </remarks>
+    public Turn Roll => Turn.At(-Twist);
+
     /// <summary>Whether this reading says anything about how the pen was held.</summary>
     /// <remarks>
     /// Read off the lean and not the azimuth, because an upright pen has no direction and a

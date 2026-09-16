@@ -99,9 +99,20 @@ public readonly record struct Brush(
             // that means nothing whenever the pen is near upright. See Leaning.
             var leaning = Leaning.Of(from).Towards(Leaning.Of(to), placement.Fraction);
 
-            // An upright pen has no direction, and nib.Degrees is the honest answer when the
-            // measurement is absent rather than whatever number arrived in its place.
-            return leaning.Azimuth is { } azimuth ? azimuth.Degrees + nib.Degrees : nib.Degrees;
+            // Direction and not Azimuth. An azimuth is a compass bearing and a stamp wants an
+            // angle from the x axis; they differ by a quarter turn, and taking the bearing
+            // lays the nib square across the direction it should lie along -- which looks
+            // like somebody's choice rather than a mistake.
+            if (leaning.Direction is { } along) return along.Degrees + nib.Degrees;
+
+            // Upright, so there is no direction here. The nearest reading that has one is
+            // used rather than the nib's resting angle, for the same reason a duplicated
+            // reading looks past itself for a direction on the taper page: the alternative
+            // puts one stamp at an angle the hand never held, and puts it exactly where a
+            // wrongly interpolated nib would have swept through.
+            return Nearest(stroke, placement.Segment) is { } known
+                ? known.Degrees + nib.Degrees
+                : nib.Degrees;
         }
 
         var dx = to.X - from.X;
@@ -110,6 +121,29 @@ public readonly record struct Brush(
         if (dx == 0 && dy == 0) return nib.Degrees;
 
         return Math.Atan2(dy, dx) * 180 / Math.PI + nib.Degrees;
+    }
+
+    /// <summary>
+    /// The direction of the nearest reading either side of this one that has one.
+    /// </summary>
+    /// <remarks>
+    /// A stroke with no lean anywhere answers null, and the caller falls back to the nib's own
+    /// angle -- which is then the honest answer, because there is no measurement to hold on to
+    /// rather than one missing at a single reading.
+    /// </remarks>
+    private static Turn? Nearest(Stroke stroke, int segment)
+    {
+        for (var away = 0; away < stroke.Count; away++)
+        {
+            foreach (var index in new[] { segment - away, segment + 1 + away })
+            {
+                if (index < 0 || index >= stroke.Count) continue;
+
+                if (Leaning.Of(stroke.Points[index]).Direction is { } direction) return direction;
+            }
+        }
+
+        return null;
     }
 
     /// <summary>The stamp this brush lays at one placement along a stroke.</summary>

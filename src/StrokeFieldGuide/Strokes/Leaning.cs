@@ -34,36 +34,78 @@ namespace StrokeFieldGuide.Strokes;
 /// angle and needs the angle machinery; the lean direction is not, because it has a length.
 /// </para>
 /// </remarks>
-public readonly record struct Leaning(double X, double Y)
+/// <param name="Across">Towards the east, which is rightwards on a surface.</param>
+/// <param name="Down">
+/// Towards the south, which is downwards on a surface — so a pen leaning <b>north</b> has a
+/// negative one of these.
+/// </param>
+public readonly record struct Leaning(double Across, double Down)
 {
     /// <summary>The pen upright: no lean, and therefore no direction.</summary>
     public static Leaning Upright => new(0, 0);
 
+    /// <summary>
+    /// The lean a bearing and a distance describe.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>An azimuth is a compass bearing, not an angle from the x axis.</b> Zero points north
+    /// — away from the hand, up a surface — and it increases clockwise, so 90 is east. This is
+    /// what Wintab reports and it is not what the obvious <c>cos</c> and <c>sin</c> give.
+    /// </para>
+    /// <para>
+    /// Measured on 16 September 2026 by tipping the far end of the pen east and watching where
+    /// a dial put the lean: it pointed south, a quarter turn clockwise of where the hand was.
+    /// The same convention falls out of WinPenKit's own conversion — its
+    /// <c>SphericalToTiltX/Y</c> give a negative x for a bearing of 90 and a positive y for a
+    /// bearing of 0 — and out of the tilt signs measured on the same tablet, where leaning
+    /// right reports a negative x and leaning up a positive y.
+    /// </para>
+    /// </remarks>
     public static Leaning From(double lean, Turn azimuth) =>
-        new(lean * Math.Cos(azimuth.Radians), lean * Math.Sin(azimuth.Radians));
+        new(lean * Math.Sin(azimuth.Radians), -lean * Math.Cos(azimuth.Radians));
 
     public static Leaning Of(Reading reading) => From(reading.Lean, Turn.At(reading.Azimuth));
 
     /// <summary>Degrees from vertical.</summary>
-    public double Lean => Math.Sqrt(X * X + Y * Y);
+    public double Lean => Math.Sqrt(Across * Across + Down * Down);
 
     /// <summary>
-    /// Which way it leans, or null when it does not lean at all.
+    /// The compass bearing it leans along, or null when it does not lean at all.
     /// </summary>
     /// <remarks>
-    /// Null rather than zero, because zero is a direction and "no direction" is not one. A
-    /// caller that wants a nib angle from an upright pen has to decide what to do about it,
-    /// which is the point: there is nothing here to decide it for them.
+    /// Null rather than zero, because zero is a direction — north — and "no direction" is not
+    /// one. A caller wanting a nib angle from an upright pen has to decide what to do about
+    /// it, which is the point: there is nothing here to decide it for them.
     /// </remarks>
     public Turn? Azimuth => Lean < 1e-12
         ? null
-        : Turn.At(Math.Atan2(Y, X) * 180 / Math.PI);
+        : Turn.At(Math.Atan2(Across, -Down) * 180 / Math.PI);
+
+    /// <summary>
+    /// The same direction as an angle to draw at, which is not the same number.
+    /// </summary>
+    /// <remarks>
+    /// A drawing angle is measured from the x axis with y increasing downwards, and a bearing
+    /// is measured from north increasing clockwise. They differ by a quarter turn — the
+    /// drawing angle is the bearing less ninety — and using one where the other is wanted
+    /// puts a nib square across the direction it should lie along, which looks like a
+    /// deliberate choice rather than a mistake.
+    /// <para>
+    /// Both are offered, named for what they are, because a reader needs the bearing to talk
+    /// about the hand and the drawing angle to lay a stamp.
+    /// </para>
+    /// </remarks>
+    public Turn? Direction => Lean < 1e-12
+        ? null
+        : Turn.At(Math.Atan2(Down, Across) * 180 / Math.PI);
 
     /// <summary>The lean a <paramref name="fraction"/> of the way to <paramref name="other"/>.</summary>
     /// <remarks>
     /// Straight-line interpolation, which is the whole trick: in this form it is correct, and
-    /// it is correct for the two reasons the remarks above give rather than by accident.
+    /// it is correct for the two reasons the remarks on this type give rather than by
+    /// accident.
     /// </remarks>
     public Leaning Towards(Leaning other, double fraction) =>
-        new(X + (other.X - X) * fraction, Y + (other.Y - Y) * fraction);
+        new(Across + (other.Across - Across) * fraction, Down + (other.Down - Down) * fraction);
 }
