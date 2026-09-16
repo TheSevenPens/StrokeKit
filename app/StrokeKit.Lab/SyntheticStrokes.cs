@@ -62,13 +62,19 @@ public static class SyntheticStrokes
         // A pressure ramp, twice. Same width either way; the per-stamp one darkens as it
         // widens, because the number of stamps over a point is the diameter over the spacing
         // and the diameter is now varying.
+        //
+        // The ramp swells and falls again rather than only rising. Falling pressure used to
+        // saturate -- the subtraction ran in unsigned arithmetic and wrapped -- and a demo
+        // that only ever pressed harder could not have shown it. Both halves of each stroke
+        // below should be mirror images; if the right half is a slab at full width, that is
+        // the fault come back.
         var nib = new Width(4, 30, 1024);
 
         Lay(art, transform, new Brush(10, new SKColor(0x10, 0x2A, 0x33).WithAlpha(0x40), 3, Buildup.PerStamp, nib),
-            Ramp(120, 610, 880, 610, 100, 1000));
+            Swell(120, 610, 880, 610, 100, 1000));
 
         Lay(art, transform, new Brush(10, new SKColor(0x10, 0x2A, 0x33).WithAlpha(0x40), 3, Buildup.OncePerStroke, nib),
-            Ramp(120, 700, 880, 700, 100, 1000));
+            Swell(120, 700, 880, 700, 100, 1000));
 
         // And one stroke that crosses itself, composited once: uniform through the crossing,
         // where per stamp it would darken there.
@@ -85,6 +91,25 @@ public static class SyntheticStrokes
     /// would make this a different pipeline from the one the page checks.
     /// </para>
     /// </summary>
+    /// <summary>
+    /// Readings along a line whose pressure rises to the midpoint and falls again, which is
+    /// the shape of an ordinary stroke and exercises the interpolation in both directions.
+    /// </summary>
+    private static IReadOnlyList<WinPenKit.PenPoint> Swell(
+        double fromX, double fromY, double toX, double toY, uint atEnds, uint atMiddle)
+    {
+        var midX = (fromX + toX) / 2;
+        var midY = (fromY + toY) / 2;
+
+        // Skip(1) on the second half: the midpoint reading would otherwise appear twice, which
+        // is a zero-length segment and harmless, but not something to put in a fixture.
+        return
+        [
+            .. Ramp(fromX, fromY, midX, midY, atEnds, atMiddle),
+            .. Ramp(midX, midY, toX, toY, atMiddle, atEnds).Skip(1),
+        ];
+    }
+
     /// <summary>Readings along a line with the pressure ramped from one value to another.</summary>
     private static IReadOnlyList<WinPenKit.PenPoint> Ramp(
         double fromX, double fromY, double toX, double toY, uint fromPressure, uint toPressure)
@@ -99,7 +124,7 @@ public static class SyntheticStrokes
             points.Add(Synthetic.Reading(
                 fromX + (toX - fromX) * along,
                 fromY + (toY - fromY) * along,
-                (uint)Math.Round(fromPressure + (toPressure - fromPressure) * along)));
+                (uint)Math.Round(Pressures.Between(fromPressure, toPressure, along))));
         }
 
         return points;
