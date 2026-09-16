@@ -89,6 +89,18 @@ public static class Synthetic
     }
 
     /// <summary>
+    /// A tap: one reading, in contact, and nothing else.
+    /// <para>
+    /// The shortest stroke there is, and a real one -- a dot on a page is a tap. It is here
+    /// because a path with one point has no length, no direction and no segments, so every
+    /// loop over a stroke's segments runs zero times and every division by its length is a
+    /// division by zero. A brush engine that has never been given one usually crashes on the
+    /// first dot somebody draws.
+    /// </para>
+    /// </summary>
+    public static IReadOnlyList<PenPoint> Tap(double x, double y, long at = 0) => [Reading(x, y, at: at)];
+
+    /// <summary>
     /// A hover reading: off the tablet, so it separates strokes rather than joining them.
     /// </summary>
     public static PenPoint Hover(double x, double y, long at = 0) => Reading(x, y, 0, at);
