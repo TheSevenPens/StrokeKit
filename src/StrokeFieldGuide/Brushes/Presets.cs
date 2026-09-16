@@ -72,6 +72,29 @@ public static class Presets
             SpacedBy.Diameters,
             new Flow(0.15, 1.0, Range, new Response(0.02, 1.0, 1.4))));
 
+    /// <summary>
+    /// A hard nib whose width follows the pen and whose ink does not, laid as one swept
+    /// outline rather than as marks.
+    /// </summary>
+    public static Preset InkPen => new(
+        "ink pen",
+        "an outlined stroke, and the only preset whose curve reaches full width before full "
+        + "pressure -- so the nib bottoms out under the hand rather than under the sensor",
+        new Brush(
+            18, SKColors.Black,
+            // Unused: an outlining engine has no marks to space. Required all the same,
+            // because a spacing is a property of the brush and not of whichever engine is
+            // reading it today.
+            1,
+            // PerStamp, where the application this came from uses its equivalent of
+            // OncePerStroke. On an opaque brush the two are indistinguishable -- overlapping
+            // opaque marks composite to the same colour -- and OncePerStroke costs a surface
+            // the size of the document for the length of the stroke. Measured at 256 MiB on
+            // an 8192-square document, which is a great deal to spend on no difference.
+            Buildup.PerStamp,
+            new Width(Thinnest, 18, Range, new Response(0, 0.85, 1.4)),
+            SpacedBy.Distance, null, Engine.Taper));
+
     /// <summary>Every preset, for a check that wants to state something about all of them.</summary>
-    public static IReadOnlyList<Preset> All => [RoundDabs];
+    public static IReadOnlyList<Preset> All => [InkPen, RoundDabs];
 }
