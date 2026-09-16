@@ -35,6 +35,7 @@ public static class SelfTest
                      ("fit brings the whole surface into the window", FitFits),
                      ("a scroll bar agrees with the pan", ScrollBarsAgree),
                      ("a frame does not read the surface per pixel", FrameCost),
+                     ("a run of resizes keeps the middle of the viewport", ResizeKeepsTheMiddle),
                      ("the demo figure lands inside the surface", DemoFits),
                  })
         {
@@ -236,6 +237,34 @@ public static class SelfTest
             return $"a 400px surface took {large} reads and a 100px one {small}, so the cost is per pixel";
 
         if (small > 4) return $"a frame reads the surface {small} times, which is not a fixed handful";
+
+        return null;
+    }
+
+    /// <summary>
+    /// Dragging a window edge is a hundred small changes, not one. They have to agree with
+    /// one large change to the same size, and before this was checked they did not: the
+    /// rounding at each step was thrown away rather than carried, and a hundred one-pixel
+    /// resizes moved a centred surface fifty pixels.
+    /// </summary>
+    private static string? ResizeKeepsTheMiddle()
+    {
+        var start = View.Centred(1, 1000, 1000, 900, 600);
+        var was = start.ToSurface(450, 300).X;
+
+        var gradual = start;
+        for (var width = 900; width < 1000; width++)
+            gradual = Presentation.KeepingCentre(gradual, width, 600, width + 1, 600);
+
+        var atOnce = Presentation.KeepingCentre(start, 900, 600, 1000, 600);
+
+        foreach (var (name, view) in new[] { ("a hundred small resizes", gradual), ("one resize", atOnce) })
+        {
+            var now = view.ToSurface(500, 300).X;
+
+            if (Math.Abs(now - was) > 0.5)
+                return $"{name} moved the middle from surface x={was} to x={now}";
+        }
 
         return null;
     }
