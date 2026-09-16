@@ -4,10 +4,12 @@ namespace StrokeFieldGuide.Views;
 /// The arithmetic a presenting control does around a <see cref="Presenter"/> call.
 /// <para>
 /// Here rather than in the control because none of it needs a window, and all of it can be
-/// wrong. A control is the one place in an application that cannot be run without a screen,
-/// so anything left inside one is a decision nobody can check. What remains in the control
-/// after this is the part that genuinely needs Avalonia: asking for the scaling, allocating
-/// the bitmap, and handing it over.
+/// wrong. A control <b>can</b> be exercised without a screen -- Avalonia has a headless
+/// platform for exactly that -- but it costs a test host, a platform and a layout pass, none
+/// of which this repository has set up, and until it does, anything left inside a control is
+/// a decision nothing checks. Arithmetic is checkable from anywhere and at no setup cost,
+/// which is the honest reason for the split. What remains in the control is the part that
+/// genuinely needs Avalonia: asking for the scaling, allocating the bitmap, handing it over.
 /// </para>
 /// <para>
 /// Everything a <see cref="View"/> holds is in physical display pixels. Everything a
