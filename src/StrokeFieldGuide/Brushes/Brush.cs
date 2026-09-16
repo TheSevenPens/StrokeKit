@@ -92,7 +92,7 @@ public readonly record struct Brush(
         var from = stroke.Points[placement.Segment];
         var to = stroke.Points[Math.Min(placement.Segment + 1, stroke.Count - 1)];
 
-        var pressure = from.Pressure + (to.Pressure - from.Pressure) * placement.Fraction;
+        var pressure = Pressures.Between(from.Pressure, to.Pressure, placement.Fraction);
 
         return width.For((uint)Math.Round(pressure));
     }
