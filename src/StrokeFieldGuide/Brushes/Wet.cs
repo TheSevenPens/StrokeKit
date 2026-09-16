@@ -81,6 +81,17 @@ public sealed class Wet : ILive
 
     public Wet(Brush brush, Surface target, InkTransform transform)
     {
+        // Refused rather than approximated. Until 16 September 2026 a taper brush handed to
+        // this silently came out stamped: the same ink, laid a completely different way, with
+        // nothing anywhere saying the engine had been ignored. An outlining engine drawn
+        // incrementally is a real thing to build and is not this.
+        if (brush.Engine != Engine.Stamps)
+        {
+            throw new NotSupportedException(
+                $"drawing a stroke as it arrives is only implemented for {Engine.Stamps}, "
+                + $"and this brush asks for {brush.Engine}");
+        }
+
         _brush = brush;
         _target = target;
         _transform = transform;
@@ -120,6 +131,18 @@ public sealed class Wet : ILive
         // by compositing, and just as invisible until a stroke gets long.
         _sofar = sofar;
 
+        // A nib that follows the path has no angle until there is a path to follow. With one
+        // reading in hand the direction is read from that reading to itself, which is no
+        // direction at all, and the stamp comes out at the nib's resting angle; the next
+        // reading turns the same placement to the direction of travel. Positions stay a
+        // prefix of the finished stroke and stamp commands stop being one, which is the
+        // property this whole class rests on.
+        //
+        // So nothing is laid until the angle is settled. Ink cannot be un-drawn, and a stamp
+        // at an orientation that was never going to be the right one is worse than a stamp
+        // that arrives one reading late.
+        if (_brush.Nib is { Held: Held.ToThePath } && sofar.Count < 2) return 0;
+
         for (; _readings < sofar.Count; _readings++)
             _path.Add((sofar.Points[_readings].X, sofar.Points[_readings].Y));
 
@@ -131,9 +154,11 @@ public sealed class Wet : ILive
 
         foreach (var placement in placements)
         {
-            var stamp = new Stamp(
-                    _brush.DiameterAt(sofar, placement), _brush.ColourAt(sofar, placement),
-                    _brush.Hardness);
+            // The brush's own stamp, not one rebuilt from three of its five fields. Built
+            // by hand here, this dropped the nib's ratio and its angle -- so a round stamp
+            // went down wherever a shaped one was asked for, and live and batch differed by
+            // 924 pixels in a 100-square fixture with nothing reporting a difference.
+            var stamp = _brush.StampAt(sofar, placement);
 
             Stamps.Draw(surface, _transform, stamp, placement.X, placement.Y, blender);
         }

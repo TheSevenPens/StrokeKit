@@ -53,6 +53,16 @@ public static class Taper
     /// </remarks>
     public const int MostPieces = 64;
 
+    /// <summary>
+    /// How far a piece's one alpha may sit from the alpha wanted along it, out of 255.
+    /// </summary>
+    /// <remarks>
+    /// Its own number rather than <see cref="Tolerance"/>, which is in surface pixels and
+    /// means nothing here. Two levels is below what a reader can see against a flat ground
+    /// and well above the rounding in a premultiplied byte.
+    /// </remarks>
+    public const double AlphaTolerance = 2;
+
     /// <summary>Draws the stroke, and answers how many pieces that took.</summary>
     /// <remarks>
     /// The count is returned for the same reason the stamping engine returns one: it is the
@@ -169,9 +179,19 @@ public static class Taper
 
         var step = along.Length;
 
-        while (Worst(step) > Tolerance && along.Length / step < MostPieces) step /= 2;
+        while ((Worst(step) > Tolerance || WorstAlpha(step) > AlphaTolerance)
+               && along.Length / step < MostPieces)
+        {
+            step /= 2;
+        }
 
         var cuts = new List<double>(turns);
+
+        // Where an attribute stops being a straight line between its neighbours. A turn is
+        // the same idea for geometry, and leaving these out was the reason a pressure spike
+        // between two readings could vanish: with the ends and the midpoint agreeing, halving
+        // the step never found it however far it went.
+        cuts.AddRange(Knots());
 
         for (var at = step; at < along.Length; at += step) cuts.Add(at);
 
@@ -204,6 +224,85 @@ public static class Taper
 
             return worst;
         }
+
+        /// <summary>
+        /// The worst alpha a piece would be drawn at, against the alpha wanted along it.
+        /// </summary>
+        /// <remarks>
+        /// Measured against the far endpoint rather than against the average, because that
+        /// is what a piece is filled with: a piece's width ramps from one end to the other
+        /// and its colour does not. The two error measures are different for that reason and
+        /// not by oversight.
+        /// <para>
+        /// Absent entirely until 16 September 2026, so a stroke whose ink varied and whose
+        /// width did not was one piece at the ink of its far end -- a ramp from nothing to
+        /// full drawn as full everywhere.
+        /// </para>
+        /// </remarks>
+        double WorstAlpha(double spacing)
+        {
+            var worst = 0.0;
+
+            for (var at = 0.0; at < along.Length; at += spacing)
+            {
+                var to = Math.Min(at + spacing, along.Length);
+
+                var filled = brush.ColourAt(stroke, along.At(to)).Alpha;
+
+                foreach (var sample in new[] { at, (at + to) / 2 })
+                {
+                    var wanted = brush.ColourAt(stroke, along.At(sample)).Alpha;
+
+                    worst = Math.Max(worst, Math.Abs(filled - wanted));
+                }
+            }
+
+            return worst;
+        }
+
+        /// <summary>
+        /// The distances at which an attribute stops being linear between its neighbours.
+        /// </summary>
+        /// <remarks>
+        /// Judged on what the attribute produces -- a diameter and an alpha -- rather than on
+        /// the raw reading. A pen's pressure moves at every reading and most of that movement
+        /// changes neither; testing the raw number would make every reading a cut and say
+        /// nothing about whether the mark needed one.
+        /// </remarks>
+        IEnumerable<double> Knots()
+        {
+            for (var index = 1; index < stroke.Count - 1; index++)
+            {
+                var before = along.DistanceTo(index - 1);
+                var here = along.DistanceTo(index);
+                var after = along.DistanceTo(index + 1);
+
+                var span = after - before;
+                if (span <= 0) continue;
+
+                var fraction = (here - before) / span;
+
+                var straightDiameter = Between(
+                    brush.DiameterAt(stroke, along.At(before)),
+                    brush.DiameterAt(stroke, along.At(after)), fraction);
+
+                var straightAlpha = Between(
+                    brush.ColourAt(stroke, along.At(before)).Alpha,
+                    brush.ColourAt(stroke, along.At(after)).Alpha, fraction);
+
+                var diameter = brush.DiameterAt(stroke, along.At(here));
+                var alpha = brush.ColourAt(stroke, along.At(here)).Alpha;
+
+                if (Math.Abs(diameter - straightDiameter) > Tolerance
+                    || Math.Abs(alpha - straightAlpha) > AlphaTolerance)
+                {
+                    yield return here;
+                }
+            }
+        }
+
+        static double Between(double from, double to, double fraction) =>
+            from + (to - from) * fraction;
     }
 
     /// <summary>
@@ -262,14 +361,21 @@ public static class Taper
         /// so is not a cut. That is the whole of what makes inserting one leave the mark
         /// alone.
         /// </remarks>
+        /// <summary>How far along the path a given reading sits.</summary>
+        public double DistanceTo(int index) => _upTo[index];
+
         public IReadOnlyList<double> Turns()
         {
             var turns = new List<double> { 0 };
 
             for (var index = 1; index < _stroke.Count - 1; index++)
             {
-                var before = Direction(index - 1, index);
-                var after = Direction(index, index + 1);
+                // Past the readings that sit exactly where their neighbour did. A pen held
+                // still reports them, so they arrive in real strokes, and taking the null
+                // direction as "no turn here" threw away the corner on both sides of one:
+                // (20,20) to (60,20) to (60,20) to (60,60) came out as a single diagonal.
+                var before = Backwards(index);
+                var after = Forwards(index);
 
                 if (before is null || after is null) continue;
 
@@ -288,6 +394,28 @@ public static class Taper
             turns.Add(Length);
 
             return turns;
+        }
+
+        /// <summary>The last direction there was, looking back from this reading.</summary>
+        private (double X, double Y)? Backwards(int index)
+        {
+            for (var from = index - 1; from >= 0; from--)
+            {
+                if (Direction(from, index) is { } direction) return direction;
+            }
+
+            return null;
+        }
+
+        /// <summary>The next direction there is, looking forward from this reading.</summary>
+        private (double X, double Y)? Forwards(int index)
+        {
+            for (var to = index + 1; to < _stroke.Count; to++)
+            {
+                if (Direction(index, to) is { } direction) return direction;
+            }
+
+            return null;
         }
 
         private (double X, double Y)? Direction(int from, int to)
