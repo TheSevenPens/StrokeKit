@@ -24,7 +24,12 @@ namespace StrokeFieldGuide.Brushes;
 /// at a spacing equal to the diameter the stamps touch without overlapping and the stroke
 /// comes out as a row of circles.
 /// </param>
-public readonly record struct Brush(double Diameter, SKColor Colour, double Spacing)
+/// <param name="Buildup">
+/// Whether the stamps meet the surface one at a time or the stroke does, once. Defaults to
+/// one at a time, which is the simpler behaviour and the one most engines have.
+/// </param>
+public readonly record struct Brush(
+    double Diameter, SKColor Colour, double Spacing, Buildup Buildup = Buildup.PerStamp)
 {
     /// <summary>
     /// Where the stamps go, in the stroke's own units, before anything is drawn.
@@ -56,7 +61,27 @@ public readonly record struct Brush(double Diameter, SKColor Colour, double Spac
         var stamp = new Stamp(Diameter, Colour);
         var positions = Positions(stroke);
 
-        foreach (var (x, y) in positions) Stamps.Draw(surface, transform, stamp, x, y);
+        if (Buildup == Buildup.PerStamp)
+        {
+            foreach (var (x, y) in positions) Stamps.Draw(surface, transform, stamp, x, y);
+
+            return positions.Count;
+        }
+
+        // The stroke's own coverage first, on a surface of its own, where overlapping stamps
+        // take the greater alpha instead of adding. Then that surface onto this one, once.
+        //
+        // The same size and the same logical size, so the transform means the same thing on
+        // both and the stamps land where they would have.
+        using var stroking = Surface.CreateExactly(
+            surface.PixelWidth, surface.PixelHeight, surface.LogicalWidth, surface.LogicalHeight);
+
+        using var blender = AlphaDarken.Blender();
+
+        foreach (var (x, y) in positions) Stamps.Draw(stroking, transform, stamp, x, y, blender);
+
+        using var image = stroking.Snapshot();
+        surface.Canvas.DrawImage(image, 0, 0);
 
         return positions.Count;
     }

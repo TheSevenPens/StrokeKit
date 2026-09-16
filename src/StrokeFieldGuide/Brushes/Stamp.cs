@@ -32,7 +32,8 @@ public static class Stamps
     /// that turns out to be.
     /// </para>
     /// </summary>
-    public static void Draw(Surface surface, InkTransform transform, Stamp stamp, double x, double y)
+    public static void Draw(
+        Surface surface, InkTransform transform, Stamp stamp, double x, double y, SKBlender? blender = null)
     {
         var (centreX, centreY) = transform.ToSurface(x, y);
 
@@ -47,6 +48,10 @@ public static class Stamps
             IsAntialias = true,
             Style = SKPaintStyle.Fill,
         };
+
+        // Given one, the stamp composites by it rather than by source-over. That is the whole
+        // difference between a stroke that darkens itself and one that does not.
+        if (blender is not null) paint.Blender = blender;
 
         surface.Canvas.DrawCircle((float)centreX, (float)centreY, (float)radius, paint);
     }
