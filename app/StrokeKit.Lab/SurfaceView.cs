@@ -21,9 +21,11 @@ namespace StrokeFieldGuide.Lab;
 /// bitmap, and handing the result over.
 /// </para>
 /// <para>
-/// A control is the one place in an application that cannot run without a screen, so a
-/// decision left inside one is a decision nobody can check. That is the reason for the
-/// split, and it is the reason this file is as short as it is.
+/// A control can be exercised without a screen -- Avalonia has a headless platform -- but
+/// nothing here is set up to do it, so for now a decision left inside this file is a decision
+/// nothing checks. That is the reason for the split and for how short this file is. It is
+/// also why the split is worth keeping even once there is a control-level suite: arithmetic
+/// is checkable at no setup cost, and a window is not.
 /// </para>
 /// </summary>
 public sealed class SurfaceView : Control
