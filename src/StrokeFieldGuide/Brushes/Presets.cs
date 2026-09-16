@@ -95,6 +95,43 @@ public static class Presets
             new Width(Thinnest, 18, Range, new Response(0, 0.85, 1.4)),
             SpacedBy.Distance, null, Engine.Taper));
 
+    /// <summary>
+    /// A constant-width nib whose ink follows the pen, with a ceiling on how much of it the
+    /// stroke can reach however many times it crosses itself.
+    /// </summary>
+    public static Preset Marker => new(
+        "marker",
+        "the only preset with a ceiling on its ink, and the only one whose buildup is load "
+        + "bearing rather than a preference -- laid per stamp the same brush goes past it",
+        new Brush(
+            42, SKColors.Black, 1,
+            // Not a preference. The ceiling is only a ceiling because the stroke meets the
+            // surface once: laid per stamp, the marks accumulate and pass it.
+            Buildup.OncePerStroke,
+            // Nothing drives the width. Said out loud because pressure driving size is the
+            // ordinary case and this brush is defined by not doing it.
+            null,
+            SpacedBy.Distance,
+            new Flow(0.007, 0.35, Range, new Response(0.05, 0.7, 1)),
+            Engine.Taper));
+
+    /// <summary>
+    /// The same engine as round dabs with the spacing walked apart, so the marks read as
+    /// beads rather than as a stroke.
+    /// </summary>
+    public static Preset Beads => new(
+        "beads",
+        "spacing at a whole diameter, which is what makes spacing in diameters visible rather "
+        + "than merely different -- and the only preset whose size keeps a floor no curve "
+        + "could express",
+        new Brush(
+            28, SKColors.Black, 1.0, Buildup.OncePerStroke,
+            // The floor is a third of the size, so the beads never shrink to nothing however
+            // lightly the pen is used. On the property rather than on the input, which is why
+            // it stays a third however many inputs there come to be.
+            new Width(0.35 * 28, 28, Range, new Response(0, 1, 0.7)),
+            SpacedBy.Diameters));
+
     /// <summary>Every preset, for a check that wants to state something about all of them.</summary>
-    public static IReadOnlyList<Preset> All => [InkPen, RoundDabs];
+    public static IReadOnlyList<Preset> All => [InkPen, Marker, RoundDabs, Beads];
 }
