@@ -310,5 +310,42 @@ public sealed class Surface : IDisposable
         return weight == 0 ? null : (sumX / weight, sumY / weight);
     }
 
+    /// <summary>
+    /// A surface at least this big, carrying this one's pixels at the origin.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Never smaller.</b> Content is preserved by drawing the old surface in at the
+    /// origin, so allocating smaller discards whatever falls outside -- and growing back
+    /// cannot recover it, because there is nothing left to recover it from. A window dragged
+    /// narrower and widened again would come back with the mark cut off, and a resize drag
+    /// does that on every step of the way.
+    /// </para>
+    /// <para>
+    /// The cost is that growth is monotonic for the life of the surface: maximise and restore
+    /// and it stays at the maximum. That is bounded by the largest size anybody asked for,
+    /// which makes it a stated consequence rather than a leak -- and it is the trade
+    /// <c>surface-lifetime</c> is about.
+    /// </para>
+    /// <para>
+    /// Answers a new surface rather than resizing this one, so a caller cannot keep a
+    /// reference to something that has silently changed size underneath it. This one is left
+    /// to the caller to dispose.
+    /// </para>
+    /// </remarks>
+    public Surface Grown(int pixelWidth, int pixelHeight, double logicalWidth, double logicalHeight)
+    {
+        var wide = Math.Max(pixelWidth, PixelWidth);
+        var high = Math.Max(pixelHeight, PixelHeight);
+
+        var grown = CreateExactly(wide, high,
+            Math.Max(logicalWidth, LogicalWidth), Math.Max(logicalHeight, LogicalHeight));
+
+        using var image = Snapshot();
+        grown.Canvas.DrawImage(image, 0, 0);
+
+        return grown;
+    }
+
     public void Dispose() => _surface.Dispose();
 }
