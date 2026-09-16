@@ -69,6 +69,12 @@ public enum RegistrationFault
 
     /// <summary>Fewer than two distinct positions were measured, which cannot tell these apart.</summary>
     NotEnoughPositions,
+
+    /// <summary>
+    /// An axis on which every sample sits at the same place, which cannot tell a translation
+    /// from a scale on that axis however many samples there are.
+    /// </summary>
+    NotEnoughSpread,
 }
 
 /// <summary>
@@ -93,10 +99,17 @@ public static class Registration
     /// back to the origin instead of hoping a sample is there.
     /// </para>
     /// <para>
-    /// Two positions are still the minimum, and they must be genuinely distinct. With two
-    /// the fit is exact and any measurement noise goes straight into both terms, which is
-    /// why the tolerance has to exceed the noise in the measurement rather than being as
-    /// small as arithmetic allows.
+    /// Two positions are still the minimum, and they must be genuinely distinct <b>on each
+    /// axis</b>. With two the fit is exact and any measurement noise goes straight into both
+    /// terms, which is why the tolerance has to exceed the noise in the measurement rather
+    /// than being as small as arithmetic allows.
+    /// </para>
+    /// <para>
+    /// Spread bounds what a measurement can rule out, and refusing a range of zero is only
+    /// the clearest case of that. Across a range <c>r</c> with a tolerance <c>t</c>, a scale
+    /// error smaller than <c>t / r</c> produces less displacement than the tolerance and is
+    /// reported as no fault. Samples close together therefore rule out large scale errors
+    /// only. Far apart is not a stylistic preference.
     /// </para>
     /// </summary>
     /// <param name="samples">Expected and actual pixel positions, in any order.</param>
@@ -114,6 +127,17 @@ public static class Registration
             .Count();
 
         if (distinct < 2) return RegistrationFault.NotEnoughPositions;
+
+        // Distinct positions is not enough: they have to be distinct on each axis separately.
+        // Two samples at (10, 10) and (100, 10) are two distinct positions and say nothing
+        // whatever about the vertical, because every scale through a single row can be
+        // matched by a translation that puts the row in the same place. Asked about a pure
+        // vertical scale of two, measured along one row, this used to answer Origin -- a
+        // confident name for a fault it had no way to see.
+        var across = Spread(samples.Select(sample => sample.Expected.X));
+        var down = Spread(samples.Select(sample => sample.Expected.Y));
+
+        if (across <= Nothing || down <= Nothing) return RegistrationFault.NotEnoughSpread;
 
         var horizontal = Fit(samples.Select(s => (s.Expected.X, s.Actual.X - s.Expected.X)).ToList());
         var vertical = Fit(samples.Select(s => (s.Expected.Y, s.Actual.Y - s.Expected.Y)).ToList());
@@ -135,6 +159,16 @@ public static class Registration
         };
     }
 
+    /// <summary>A range below this is no range at all, allowing for the arithmetic.</summary>
+    private const double Nothing = 1e-6;
+
+    private static double Spread(IEnumerable<double> positions)
+    {
+        var all = positions.ToList();
+
+        return all.Max() - all.Min();
+    }
+
     /// <summary>
     /// Least squares through (position, displacement), returning the displacement at the
     /// origin and the displacement the slope accumulates across the measured range.
@@ -146,8 +180,8 @@ public static class Registration
 
         var spread = points.Sum(point => Math.Pow(point.At - meanAt, 2));
 
-        // Every sample at the same place on this axis. The axis says nothing about a slope,
-        // and the mean displacement is the whole of what it does say.
+        // Unreachable from Read, which refuses an axis with no spread before it gets here.
+        // Kept so that the arithmetic below cannot divide by zero if this is called directly.
         if (spread == 0) return (meanDisplaced, 0);
 
         var slope = points.Sum(point => (point.At - meanAt) * (point.Displaced - meanDisplaced)) / spread;
