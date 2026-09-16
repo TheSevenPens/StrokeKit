@@ -59,11 +59,22 @@ public static class SyntheticStrokes
         Lay(art, transform, new Brush(34, wash, 3, Buildup.OncePerStroke),
             Synthetic.Line(120, 510, 880, 510, 200));
 
+        // A pressure ramp, twice. Same width either way; the per-stamp one darkens as it
+        // widens, because the number of stamps over a point is the diameter over the spacing
+        // and the diameter is now varying.
+        var nib = new Width(4, 30, 1024);
+
+        Lay(art, transform, new Brush(10, new SKColor(0x10, 0x2A, 0x33).WithAlpha(0x40), 3, Buildup.PerStamp, nib),
+            Ramp(120, 610, 880, 610, 100, 1000));
+
+        Lay(art, transform, new Brush(10, new SKColor(0x10, 0x2A, 0x33).WithAlpha(0x40), 3, Buildup.OncePerStroke, nib),
+            Ramp(120, 700, 880, 700, 100, 1000));
+
         // And one stroke that crosses itself, composited once: uniform through the crossing,
         // where per stamp it would darken there.
         Lay(art, transform, new Brush(34, new SKColor(0x1E, 0x4D, 0x8A).WithAlpha(0x40), 3, Buildup.OncePerStroke),
-            [.. Synthetic.Line(200, 620, 800, 900, 160), .. Synthetic.Line(800, 900, 200, 900, 160),
-             .. Synthetic.Line(200, 900, 800, 620, 160)]);
+            [.. Synthetic.Line(220, 780, 780, 940, 160), .. Synthetic.Line(780, 940, 220, 940, 160),
+             .. Synthetic.Line(220, 940, 780, 780, 160)]);
     }
 
     /// <summary>
@@ -74,6 +85,26 @@ public static class SyntheticStrokes
     /// would make this a different pipeline from the one the page checks.
     /// </para>
     /// </summary>
+    /// <summary>Readings along a line with the pressure ramped from one value to another.</summary>
+    private static IReadOnlyList<WinPenKit.PenPoint> Ramp(
+        double fromX, double fromY, double toX, double toY, uint fromPressure, uint toPressure)
+    {
+        const int readings = 60;
+        var points = new List<WinPenKit.PenPoint>(readings);
+
+        for (var index = 0; index < readings; index++)
+        {
+            var along = index / (double)(readings - 1);
+
+            points.Add(Synthetic.Reading(
+                fromX + (toX - fromX) * along,
+                fromY + (toY - fromY) * along,
+                (uint)Math.Round(fromPressure + (toPressure - fromPressure) * along)));
+        }
+
+        return points;
+    }
+
     private static void Lay(
         Surface art, InkTransform transform, Brush brush, IReadOnlyList<WinPenKit.PenPoint> readings)
     {
