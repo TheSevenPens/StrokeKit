@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using SkiaSharp;
 using StrokeFieldGuide.Strokes;
 using StrokeFieldGuide.Surfaces;
@@ -30,6 +31,7 @@ public sealed class PenPad : Decorator
 {
     private Surface _art;
     private readonly SurfaceView _view;
+    private readonly NibCursor _cursor = new();
 
     /// <param name="width">A starting size. It grows to the box on the first frame.</param>
     public PenPad(int width = 800, int height = 400)
@@ -44,7 +46,14 @@ public sealed class PenPad : Decorator
 
         _view.Rendered += (_, _) => FitToTheBox();
 
-        Child = _view;
+        // The cursor sits over the view rather than in it. Ink is permanent and a cursor is
+        // not, so they do not share a surface -- see NibCursor for why that is the whole
+        // technique rather than an implementation detail.
+        Child = new Panel { Children = { _view, _cursor } };
+
+        // One pointer on screen, not two. The system's arrow beside a nib outline is the
+        // commonest thing that makes a brush cursor look wrong.
+        Cursor = new Cursor(StandardCursorType.None);
     }
 
     /// <summary>The surface being drawn on. Replaced when the pad grows, so do not hold it.</summary>
@@ -91,6 +100,62 @@ public sealed class PenPad : Decorator
     /// surface rather than owning what goes on it.
     /// </remarks>
     public void Redraw() => _view.InvalidateVisual();
+
+    /// <summary>
+    /// Shows the nib the brush would lay, where the pen is.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Two conversions again, and the sizes need one the positions do not. A pen reports
+    /// desktop pixels, so the box's own corner comes off; then the control draws in device
+    /// independent units, so what is left is divided by the window's scaling.
+    /// </para>
+    /// <para>
+    /// The nib's size arrives in <b>surface</b> pixels, which is what a brush works in. On
+    /// screen it is that times the view's zoom, and then in units it is that over the
+    /// scaling -- so the cursor grows when the reader zooms in, which is what makes it a
+    /// picture of the mark rather than a fixed decoration.
+    /// </para>
+    /// </remarks>
+    /// <param name="desktopX">Where the pen is, as the session reports it.</param>
+    /// <param name="surfaceDiameter">The nib's long diameter, in surface pixels.</param>
+    public void ShowNib(double desktopX, double desktopY,
+                        double surfaceDiameter, double ratio, double degrees)
+    {
+        var box = _view.PointToScreen(new Point(0, 0));
+        var scale = _view.RenderScale;
+
+        if (scale <= 0) return;
+
+        _cursor.Show(
+            new Point((desktopX - box.X) / scale, (desktopY - box.Y) / scale),
+            surfaceDiameter * _view.View.Zoom / scale,
+            ratio,
+            degrees);
+    }
+
+    /// <summary>Takes the nib off, for a pen that has left the tablet.</summary>
+    public void HideNib() => _cursor.Hide();
+
+    /// <summary>
+    /// Whether a position reported on the desktop is over this pad.
+    /// </summary>
+    /// <remarks>
+    /// A tablet session reports the pen wherever it is, not only where the drawing is. An
+    /// application that acts on every reading acts on the ones made while the reader is
+    /// pressing a button -- which is how tapping "Arm" with the pen armed the recorder and
+    /// then instantly recorded that same tap as a two-reading stroke, and looked from the
+    /// outside like the button un-arming itself.
+    /// </remarks>
+    public bool Covers(double desktopX, double desktopY)
+    {
+        var box = _view.PointToScreen(new Point(0, 0));
+        var scale = _view.RenderScale;
+
+        return desktopX >= box.X && desktopY >= box.Y
+               && desktopX < box.X + Bounds.Width * scale
+               && desktopY < box.Y + Bounds.Height * scale;
+    }
 
     /// <summary>Where a reading reported on the desktop lands on this pad, in surface pixels.</summary>
     public (double X, double Y) Under(Reading reading) => ForPen().ToSurface(reading.X, reading.Y);
