@@ -25,12 +25,21 @@ namespace StrokeFieldGuide.Brushes;
 /// <c>Hardness</c> of its radius and falls to nothing at the rim.
 /// </para>
 /// </param>
-public readonly record struct Stamp(double Diameter, SKColor Colour, double Hardness = 1)
+/// <param name="Ratio">
+/// The short axis as a fraction of the long one. One is a circle, which is what every stamp
+/// was before nibs.
+/// </param>
+/// <param name="Degrees">Where the long axis points, already resolved from the nib.</param>
+public readonly record struct Stamp(
+    double Diameter, SKColor Colour, double Hardness = 1, double Ratio = 1, double Degrees = 0)
 {
     public double Radius => Diameter / 2;
 
     /// <summary>True when the stamp has an edge worth drawing with a gradient.</summary>
     public bool IsSoft => Hardness < 1;
+
+    /// <summary>True when the stamp's mark depends on which way it points.</summary>
+    public bool IsRound => Ratio >= 1;
 }
 
 public static class Stamps
@@ -86,6 +95,37 @@ public static class Stamps
         // difference between a stroke that darkens itself and one that does not.
         if (blender is not null) paint.Blender = blender;
 
-        surface.Canvas.DrawCircle((float)centreX, (float)centreY, (float)radius, paint);
+        if (stamp.IsRound)
+        {
+            surface.Canvas.DrawCircle((float)centreX, (float)centreY, (float)radius, paint);
+
+            return;
+        }
+
+        // Rotated and squashed rather than drawn as an oval, so that the falloff squashes with
+        // the shape. An oval filled by a circular gradient would be a soft circle clipped to
+        // an ellipse, which has a hard edge along its long sides and is not a soft nib.
+        var count = surface.Canvas.Save();
+
+        surface.Canvas.Translate((float)centreX, (float)centreY);
+        surface.Canvas.RotateDegrees((float)stamp.Degrees);
+        surface.Canvas.Scale(1, (float)Math.Clamp(stamp.Ratio, 0.001, 1));
+
+        // The shader was built around the stamp's centre in surface coordinates, and the
+        // canvas has just moved out from under it.
+        if (stamp.IsSoft)
+        {
+            paint.Shader?.Dispose();
+
+            paint.Shader = SKShader.CreateRadialGradient(
+                new SKPoint(0, 0), (float)radius,
+                [stamp.Colour, stamp.Colour.WithAlpha(0)],
+                [(float)Math.Clamp(stamp.Hardness, 0, 1), 1],
+                SKShaderTileMode.Clamp);
+        }
+
+        surface.Canvas.DrawCircle(0, 0, (float)radius, paint);
+
+        surface.Canvas.RestoreToCount(count);
     }
 }

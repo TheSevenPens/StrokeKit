@@ -44,6 +44,9 @@ namespace StrokeFieldGuide.Brushes;
 /// rather than one per stamp, and softening it is a different piece of work.
 /// </para>
 /// </param>
+/// <param name="Nib">
+/// The shape of the mark, or null for a circle. Read by the stamping engine only.
+/// </param>
 /// <param name="Engine">
 /// Which engine lays the marks down. Stamps by default, which is what every page before the
 /// taper was measured against.
@@ -67,8 +70,40 @@ public readonly record struct Brush(
     SpacedBy SpacedBy = SpacedBy.Distance,
     Flow? Flow = null,
     Engine Engine = Engine.Stamps,
-    double Hardness = 1)
+    double Hardness = 1,
+    Nib? Nib = null)
 {
+    /// <summary>
+    /// Where a stamp's long axis points, in degrees, once the nib's rule has been applied.
+    /// </summary>
+    /// <remarks>
+    /// A fixed nib answers its own angle. One held to the path answers the direction of
+    /// travel plus its offset -- and where there is no direction, because the hand stopped,
+    /// it falls back to the offset alone. That is a policy rather than an answer: a stroke
+    /// that presses without moving has no direction to present a face to, and the last one
+    /// is not available to a placement.
+    /// </remarks>
+    public double AngleAt(Stroke stroke, Placement placement)
+    {
+        if (Nib is not { } nib) return 0;
+        if (nib.Held == Held.Fixed) return nib.Degrees;
+
+        var from = stroke.Points[placement.Segment];
+        var to = stroke.Points[Math.Min(placement.Segment + 1, stroke.Count - 1)];
+
+        var dx = to.DesktopX - from.DesktopX;
+        var dy = to.DesktopY - from.DesktopY;
+
+        if (dx == 0 && dy == 0) return nib.Degrees;
+
+        return Math.Atan2(dy, dx) * 180 / Math.PI + nib.Degrees;
+    }
+
+    /// <summary>The stamp this brush lays at one placement along a stroke.</summary>
+    public Stamp StampAt(Stroke stroke, Placement placement) => new(
+        DiameterAt(stroke, placement), ColourAt(stroke, placement), Hardness,
+        Nib?.Ratio ?? 1, AngleAt(stroke, placement));
+
     /// <summary>
     /// The colour a stamp is laid in, which is <see cref="Colour"/> unless the pen decides
     /// its alpha.
@@ -149,7 +184,7 @@ public readonly record struct Brush(
         var stamps = new List<Stamp>();
 
         foreach (var placement in Placements(stroke))
-            stamps.Add(new Stamp(DiameterAt(stroke, placement), ColourAt(stroke, placement), Hardness));
+            stamps.Add(StampAt(stroke, placement));
 
         return stamps;
     }
@@ -197,7 +232,7 @@ public readonly record struct Brush(
         foreach (var placement in placements)
         {
             laid.Add((placement.X, placement.Y,
-                new Stamp(DiameterAt(stroke, placement), ColourAt(stroke, placement), Hardness)));
+                StampAt(stroke, placement)));
         }
 
         if (Buildup == Buildup.PerStamp)
