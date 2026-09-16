@@ -238,17 +238,28 @@ public sealed class Walk(double spacing, Func<Placement, double>? gapAfter = nul
 
     /// <summary>The gap after a stamp, refused if it would not advance the walk.</summary>
     /// <remarks>
+    /// <para>
     /// A gap of zero or less does not move, so the walk would stamp the same place forever.
     /// Worth a throw rather than a clamp: a brush that asks for it has a diameter of zero or
     /// a negative fraction, and both are questions for the caller.
+    /// </para>
+    /// <para>
+    /// <b>Positive is not the same as advancing.</b> The next stamp's distance is added to
+    /// the distance already travelled, and past about 1e15 units a gap of a thousandth is
+    /// smaller than an ulp there -- the sum is the number it started from and the walk stops
+    /// moving without anything being wrong with the gap. No stroke is that long, which is
+    /// why the guard is written against the sum rather than against the gap: it costs one
+    /// comparison and it is the condition that actually matters.
+    /// </para>
     /// </remarks>
     private double Gap(Placement placement)
     {
         var gap = _gapAfter!(placement);
 
-        return gap > 0
-            ? gap
-            : throw new InvalidOperationException(
-                $"a gap is positive; the brush asked for {gap} after a stamp at ({placement.X}, {placement.Y})");
+        if (gap > 0 && _next + gap > _next) return gap;
+
+        throw new InvalidOperationException(
+            $"a gap has to advance the walk; the brush asked for {gap} after a stamp at "
+            + $"({placement.X}, {placement.Y}), {_next} along the path");
     }
 }
