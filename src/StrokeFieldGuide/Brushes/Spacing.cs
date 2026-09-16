@@ -1,6 +1,16 @@
 namespace StrokeFieldGuide.Brushes;
 
 /// <summary>
+/// Where one stamp goes, and where it sits between the two readings it fell between.
+/// </summary>
+/// <param name="Segment">The index of the reading the stamp is past.</param>
+/// <param name="Fraction">
+/// How far from that reading to the next, from 0 to 1. Zero for the first stamp, which is at
+/// the first reading.
+/// </param>
+public readonly record struct Placement(double X, double Y, int Segment, double Fraction);
+
+/// <summary>
 /// Where along a path the stamps go.
 /// <para>
 /// By distance travelled, never by how many points arrived. The pen reports on a clock and
@@ -27,12 +37,26 @@ public static class Spacing
     /// </para>
     /// </summary>
     public static IReadOnlyList<(double X, double Y)> Along(
+        IReadOnlyList<(double X, double Y)> path, double spacing) =>
+        [.. Placements(path, spacing).Select(placement => (placement.X, placement.Y))];
+
+    /// <summary>
+    /// The same positions, each saying which pair of readings it fell between and how far
+    /// along that pair it is.
+    /// <para>
+    /// Needed the moment a stamp carries anything that varies along the stroke. Stamps go
+    /// down every fixed distance and readings arrive on a clock, so <b>most stamps are not at
+    /// a reading</b>: a stamp that took the nearest reading's pressure would step rather than
+    /// ramp, and the steps would be wherever the hand happened to be slow.
+    /// </para>
+    /// </summary>
+    public static IReadOnlyList<Placement> Placements(
         IReadOnlyList<(double X, double Y)> path, double spacing)
     {
         if (!(spacing > 0)) throw new ArgumentOutOfRangeException(nameof(spacing), "a spacing is positive");
         if (path.Count == 0) return [];
 
-        var positions = new List<(double X, double Y)> { path[0] };
+        var positions = new List<Placement> { new(path[0].X, path[0].Y, 0, 0) };
 
         // How far past the last stamp we have travelled. A segment shorter than what is left
         // to run adds to this and produces nothing, which is what keeps the spacing constant
@@ -57,7 +81,7 @@ public static class Spacing
                 since = 0;
 
                 var at = travelled / length;
-                positions.Add((from.X + dx * at, from.Y + dy * at));
+                positions.Add(new Placement(from.X + dx * at, from.Y + dy * at, index - 1, at));
             }
 
             since += length - travelled;

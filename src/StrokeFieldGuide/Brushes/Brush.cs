@@ -28,8 +28,17 @@ namespace StrokeFieldGuide.Brushes;
 /// Whether the stamps meet the surface one at a time or the stroke does, once. Defaults to
 /// one at a time, which is the simpler behaviour and the one most engines have.
 /// </param>
+/// <param name="Width">
+/// How pressure becomes a diameter, or null for a stamp that is always
+/// <paramref name="Diameter"/> across. Null by default, because the pages before this one
+/// are about everything a stroke does before its width varies.
+/// </param>
 public readonly record struct Brush(
-    double Diameter, SKColor Colour, double Spacing, Buildup Buildup = Buildup.PerStamp)
+    double Diameter,
+    SKColor Colour,
+    double Spacing,
+    Buildup Buildup = Buildup.PerStamp,
+    Width? Width = null)
 {
     /// <summary>
     /// Where the stamps go, in the stroke's own units, before anything is drawn.
@@ -49,6 +58,46 @@ public readonly record struct Brush(
     }
 
     /// <summary>
+    /// The stamps this brush would lay: where each goes and how wide it is there.
+    /// <para>
+    /// Separate from drawing them for the same reason the positions are: the sizes can be
+    /// compared against arithmetic without a surface existing.
+    /// </para>
+    /// </summary>
+    public IReadOnlyList<Stamp> Stamps(Stroke stroke)
+    {
+        var path = stroke.Points.Select(point => (point.DesktopX, point.DesktopY)).ToList();
+
+        var stamps = new List<Stamp>();
+
+        foreach (var placement in Brushes.Spacing.Placements(path, Spacing))
+            stamps.Add(new Stamp(DiameterAt(stroke, placement), Colour));
+
+        return stamps;
+    }
+
+    /// <summary>
+    /// The diameter where a stamp landed, which is almost never at a reading.
+    /// <para>
+    /// The pressure is interpolated between the two readings the stamp fell between. Taking
+    /// the nearer reading's pressure instead makes the width step rather than ramp, and puts
+    /// the steps wherever the hand happened to be slow -- which is a property of the report
+    /// rate rather than of the stroke.
+    /// </para>
+    /// </summary>
+    private double DiameterAt(Stroke stroke, Placement placement)
+    {
+        if (Width is not { } width) return Diameter;
+
+        var from = stroke.Points[placement.Segment];
+        var to = stroke.Points[Math.Min(placement.Segment + 1, stroke.Count - 1)];
+
+        var pressure = from.Pressure + (to.Pressure - from.Pressure) * placement.Fraction;
+
+        return width.For((uint)Math.Round(pressure));
+    }
+
+    /// <summary>
     /// Draws the stroke, and answers how many stamps that took.
     /// <para>
     /// The count is returned because it is the one number about a finished mark that can be
@@ -58,14 +107,19 @@ public readonly record struct Brush(
     /// </summary>
     public int Draw(Surface surface, InkTransform transform, Stroke stroke)
     {
-        var stamp = new Stamp(Diameter, Colour);
-        var positions = Positions(stroke);
+        var path = stroke.Points.Select(point => (point.DesktopX, point.DesktopY)).ToList();
+        var placements = Brushes.Spacing.Placements(path, Spacing);
+
+        var laid = new List<(double X, double Y, Stamp Stamp)>(placements.Count);
+
+        foreach (var placement in placements)
+            laid.Add((placement.X, placement.Y, new Stamp(DiameterAt(stroke, placement), Colour)));
 
         if (Buildup == Buildup.PerStamp)
         {
-            foreach (var (x, y) in positions) Stamps.Draw(surface, transform, stamp, x, y);
+            foreach (var (x, y, stamp) in laid) Brushes.Stamps.Draw(surface, transform, stamp, x, y);
 
-            return positions.Count;
+            return laid.Count;
         }
 
         // The stroke's own coverage first, on a surface of its own, where overlapping stamps
@@ -78,11 +132,11 @@ public readonly record struct Brush(
 
         using var blender = AlphaDarken.Blender();
 
-        foreach (var (x, y) in positions) Stamps.Draw(stroking, transform, stamp, x, y, blender);
+        foreach (var (x, y, stamp) in laid) Brushes.Stamps.Draw(stroking, transform, stamp, x, y, blender);
 
         using var image = stroking.Snapshot();
         surface.Canvas.DrawImage(image, 0, 0);
 
-        return positions.Count;
+        return laid.Count;
     }
 }
