@@ -48,13 +48,22 @@ public static class SyntheticStrokes
         Lay(art, transform, new Brush(18, new SKColor(0x0D, 0x6A, 0x6A), 2),
             Synthetic.Arc(500, 620, 260, 200, 340, 240));
 
-        // Two that cross, so the overlap between separate strokes is visible next to the
-        // overlap within one.
-        Lay(art, transform, new Brush(30, new SKColor(0x8A, 0x4B, 0x12).WithAlpha(0x60), 4),
-            Synthetic.Line(200, 420, 800, 900, 120));
+        // The same translucent stroke, composited two ways. Per stamp it is nearly opaque
+        // because the stamps accumulate; once per stroke it is the alpha it was asked for.
+        // Same brush, same spacing, same path: the difference is only where the stamps meet.
+        var wash = new SKColor(0x8A, 0x4B, 0x12).WithAlpha(0x40);
 
-        Lay(art, transform, new Brush(30, new SKColor(0x1E, 0x4D, 0x8A).WithAlpha(0x60), 4),
-            Synthetic.Line(800, 420, 200, 900, 120));
+        Lay(art, transform, new Brush(34, wash, 3, Buildup.PerStamp),
+            Synthetic.Line(120, 430, 880, 430, 200));
+
+        Lay(art, transform, new Brush(34, wash, 3, Buildup.OncePerStroke),
+            Synthetic.Line(120, 510, 880, 510, 200));
+
+        // And one stroke that crosses itself, composited once: uniform through the crossing,
+        // where per stamp it would darken there.
+        Lay(art, transform, new Brush(34, new SKColor(0x1E, 0x4D, 0x8A).WithAlpha(0x40), 3, Buildup.OncePerStroke),
+            [.. Synthetic.Line(200, 620, 800, 900, 160), .. Synthetic.Line(800, 900, 200, 900, 160),
+             .. Synthetic.Line(200, 900, 800, 620, 160)]);
     }
 
     /// <summary>
