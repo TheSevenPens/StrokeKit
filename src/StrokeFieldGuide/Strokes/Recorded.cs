@@ -28,14 +28,24 @@ namespace StrokeFieldGuide.Strokes;
 public static class Recorded
 {
     /// <summary>
-    /// Where the traces live, relative to the repository root.
+    /// Where the recordings live, relative to the repository root.
     /// </summary>
     /// <remarks>
-    /// Found by walking up from the running assembly until a directory holding it appears,
-    /// because a test host, the recorder and a tool each run from a different place and none
-    /// of them is the repository root.
+    /// <para>
+    /// <c>corpus/</c> is a submodule of <c>StrokeCorpus</c>, which is where these recordings
+    /// are published and where new ones arrive. <b>The submodule is pinned, and that is the
+    /// point.</b> This corpus is not only a folder of data: five page checks draw against
+    /// <see cref="Telling"/>, whose members are chosen by measurement, so a recording
+    /// contributed by a stranger with a wider step than anything here would silently become
+    /// one of the fixtures those checks run on. Pinned, adopting new recordings is a commit
+    /// in this repository that says so.
+    /// </para>
+    /// <para>
+    /// A bare <c>traces/</c> is still accepted, because that is where they lived before the
+    /// corpus was published and a checkout from then should still find them.
+    /// </para>
     /// </remarks>
-    public const string Folder = "traces";
+    public static readonly string[] Folders = ["corpus/traces", "traces"];
 
     /// <summary>The corner every recorded fixture is moved to.</summary>
     /// <remarks>
@@ -260,16 +270,25 @@ public static class Recorded
         return when > cut ? $"{take[..cut]}-{take[(when + 1)..]}" : take[..cut];
     }
 
-    /// <summary>The traces folder, found by walking up from wherever this is running.</summary>
-    private static string? Root()
+    /// <summary>
+    /// The recordings folder, found by walking up from wherever this is running.
+    /// </summary>
+    /// <remarks>
+    /// Walked up to rather than configured, because a test host, the recorder and a tool
+    /// each run from a different place and none of them is the repository root.
+    /// </remarks>
+    public static string? Root()
     {
         var at = new DirectoryInfo(AppContext.BaseDirectory);
 
         while (at is not null)
         {
-            var traces = Path.Combine(at.FullName, Folder);
+            foreach (var folder in Folders)
+            {
+                var here = Path.Combine(at.FullName, folder);
 
-            if (Directory.Exists(traces)) return traces;
+                if (Directory.Exists(here)) return here;
+            }
 
             at = at.Parent;
         }
