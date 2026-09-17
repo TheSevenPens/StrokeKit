@@ -3,4 +3,7 @@
     <Project Path="src/StrokeKit/StrokeKit.csproj" />
     <Project Path="src/StrokeKit.Avalonia/StrokeKit.Avalonia.csproj" />
   </Folder>
+  <Folder Name="/test/">
+    <Project Path="test/StrokeKit.Tests/StrokeKit.Tests.csproj" />
+  </Folder>
 </Solution>

@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The kit's own tests.
+
+    These ran in StrokeFieldGuide's suite until the kit became its own repository, which meant
+    a kit whose behaviour was only checked from a consumer. Nothing was lost by that — the
+    guide still exercises these types — but a kit that cannot be cloned and verified on its
+    own is only half a kit, and the clone already builds.
+
+    xunit v2 rather than v3, matching the suite these came from. The v3 requirement in that
+    repository comes from Avalonia.Headless.XUnit, and nothing here opens a window.
+  -->
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>StrokeKit.Tests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\StrokeKit\StrokeKit.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -26,6 +26,11 @@ jobs:
       - name: Build
         run: dotnet build StrokeKit.slnx -c Release
 
+      # No window is opened by any of these: the trace format's column handling, the batch
+      # clock, and the contracts a live stroke is built under are all arithmetic and files.
+      - name: Test
+        run: dotnet test StrokeKit.slnx -c Release --no-build
+
   # The pin is deliberate -- see the README -- but a pin that is never checked against the
   # thing it pins is how a kit quietly stops compiling against its own dependency's future.
   # This job says so early, and is allowed to fail without failing the build.
