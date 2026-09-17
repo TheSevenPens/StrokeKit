@@ -1,7 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="StrokeFieldGuide.Lab.MainWindow"
-        Title="Stroke Field Guide — stage one: surface, canvas, view"
+        Title="Stroke Field Guide — surface, canvas, view, and a live pen"
         Width="1100" Height="820">
     <DockPanel>
         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="10,10,10,6" Spacing="6">
@@ -20,6 +20,25 @@
                        Text="hold space to pan" />
         </StackPanel>
 
+        <!-- The pen's own row. Separate from the drawing controls above because everything
+             here depends on a device being present, and a row that is empty on a machine
+             with no tablet should be one row rather than gaps in another. -->
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="10,0,10,6" Spacing="6">
+            <TextBlock VerticalAlignment="Center" Text="Pen" Opacity="0.7" FontSize="12" />
+            <ComboBox x:Name="PenApi" MinWidth="170" />
+            <Button x:Name="PenConnect" Content="Connect" />
+            <Border Width="12" />
+            <TextBlock VerticalAlignment="Center" Text="Brush" Opacity="0.7" FontSize="12" />
+            <ComboBox x:Name="PenBrush" MinWidth="130" />
+            <Border Width="12" />
+            <TextBlock x:Name="PenState" VerticalAlignment="Center" FontSize="12" Opacity="0.75" />
+        </StackPanel>
+
+        <!-- Not wrapped, and the pen's numbers are not on it. Wrapping it made the line
+             two rows tall, which took 14 px off the viewport at the next layout pass; the
+             view then re-centred, as a size change is supposed to, and the frame stopped
+             being the surface pixel for pixel. A status line whose height depends on its
+             contents moves the thing it is reporting on. -->
         <TextBlock x:Name="Status" DockPanel.Dock="Bottom"
                    Margin="10,6,10,10" FontFamily="Cascadia Mono,Consolas,monospace"
                    FontSize="12" Opacity="0.75" />

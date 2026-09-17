@@ -43,9 +43,23 @@ public static class Headless
         var host = window.FindControl<Panel>("Host")
             ?? throw new InvalidOperationException("the window has no canvas host");
 
-        var canvas = host.Children.OfType<SurfaceView>().SingleOrDefault()
+        // Anywhere under the host, not only directly in it. The nib cursor has to sit over
+        // the view rather than in it, so the two are wrapped together in a panel -- and a
+        // helper that only looked one level down turned that into sixteen failing tests
+        // saying "the host has no surface view" about a window that had one.
+        var canvas = Somewhere(host)
             ?? throw new InvalidOperationException("the host has no surface view");
 
         return (window, canvas);
+    }
+
+    /// <summary>The one surface view under a control, however deep.</summary>
+    private static SurfaceView? Somewhere(Control at)
+    {
+        if (at is SurfaceView found) return found;
+
+        if (at is not Panel panel) return null;
+
+        return panel.Children.Select(Somewhere).FirstOrDefault(child => child is not null);
     }
 }
