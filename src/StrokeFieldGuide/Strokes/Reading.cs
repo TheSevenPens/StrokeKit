@@ -85,6 +85,23 @@ namespace StrokeFieldGuide.Strokes;
 /// not an absence, and this field cannot say whether the device reports rotation at all --
 /// unlike <paramref name="Lean"/>, where upright and unreported coincide harmlessly.
 /// </param>
+/// <param name="Arrived">
+/// Microseconds on the <b>host's</b> monotonic clock, taken when this reading was handed to
+/// the application -- which is a different clock from <paramref name="At"/> and the whole
+/// reason it exists. A pen's own timestamp is the only time a trace has ever carried, so a
+/// gap in it has never been separable from a gap in delivery: if the device stamps a packet
+/// late, the trace shows silence that never happened, and nothing in the file can contradict
+/// it.
+/// <para>
+/// Readings that reached the application together carry the <b>same</b> value, because the
+/// recorder drains in batches rather than taking one packet at a time. That is the useful
+/// property and not a rounding loss: two readings a device claims are 138 ms apart, arriving
+/// in one batch, settle the question without any appeal to clock resolution.
+/// </para>
+/// <para>
+/// Zero where nothing stamped it. Readings built by hand in tests have no arrival.
+/// </para>
+/// </param>
 public readonly record struct Reading(
     double X,
     double Y,
@@ -94,7 +111,8 @@ public readonly record struct Reading(
     uint Status = 0,
     double Lean = 0,
     double Azimuth = 0,
-    double Twist = 0)
+    double Twist = 0,
+    long Arrived = 0)
 {
     /// <summary>Whether the tip is down. Contact is non-zero pressure, which is a choice.</summary>
     /// <remarks>
