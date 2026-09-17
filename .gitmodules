@@ -1,0 +1,3 @@
+[submodule "vendor/WinPenKit"]
+	path = vendor/WinPenKit
+	url = https://github.com/TheSevenPens/WinPenKit.git

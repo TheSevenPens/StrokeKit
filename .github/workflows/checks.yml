@@ -1,0 +1,50 @@
+name: checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  checks:
+    # Windows because this targets net10.0-windows, which follows from WinPenKit targeting it.
+    runs-on: windows-latest
+
+    steps:
+      # recursive, because WinPenKit is a submodule of this repository rather than a package
+      # or a sibling checkout. That is what lets this kit be cloned and built on its own,
+      # which is the property that makes it a kit rather than a folder.
+      - uses: actions/checkout@v5
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+          dotnet-quality: 'preview'
+
+      - name: Build
+        run: dotnet build StrokeKit.slnx -c Release
+
+  # The pin is deliberate -- see the README -- but a pin that is never checked against the
+  # thing it pins is how a kit quietly stops compiling against its own dependency's future.
+  # This job says so early, and is allowed to fail without failing the build.
+  against-winpenkit-main:
+    runs-on: windows-latest
+    continue-on-error: true
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: recursive
+
+      - name: Take WinPenKit's main instead of the pin
+        run: git -C vendor/WinPenKit fetch origin main --depth 1 && git -C vendor/WinPenKit checkout FETCH_HEAD
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+          dotnet-quality: 'preview'
+
+      - name: Build
+        run: dotnet build StrokeKit.slnx -c Release

@@ -1,0 +1,6 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/StrokeKit/StrokeKit.csproj" />
+    <Project Path="src/StrokeKit.Avalonia/StrokeKit.Avalonia.csproj" />
+  </Folder>
+</Solution>

@@ -34,7 +34,7 @@
       WinPenKit alone, because the Avalonia pointer session is one of the backends offered
       and it is the one that needs a Control.
     -->
-    <ProjectReference Include="..\..\..\WinPenKit\WinPenKit.Avalonia\WinPenKit.Avalonia.csproj" />
+    <ProjectReference Include="..\..\vendor\WinPenKit\WinPenKit.Avalonia\WinPenKit.Avalonia.csproj" />
   </ItemGroup>
 
 </Project>

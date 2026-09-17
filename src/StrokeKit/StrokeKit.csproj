@@ -29,7 +29,7 @@
       Reading and Leaning are stated in WinPenKit's terms, because a reading is what a pen
       session hands over and restating it here would be a second vocabulary for one thing.
     -->
-    <ProjectReference Include="..\..\..\WinPenKit\WinPenKit\WinPenKit.csproj" />
+    <ProjectReference Include="..\..\vendor\WinPenKit\WinPenKit\WinPenKit.csproj" />
   </ItemGroup>
 
 </Project>
