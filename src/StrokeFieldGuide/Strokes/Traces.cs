@@ -130,7 +130,17 @@ public static class Traces
             Twist: Cell(row, _twist),
             Arrived: (long)Cell(row, _arrived));
 
+        /// <summary>A cell of a row, or zero where the column is absent or the row is short.</summary>
+        /// <remarks>
+        /// <b>A null is an absence, not an error.</b> A take that carries no host clock has a
+        /// null in that column on every row, and <c>GetDouble</c> throws on it. This is the
+        /// second reader in this repository to have had that fault and the second to have it
+        /// fixed, which is the cost of there being two: see the note on this class.
+        /// </remarks>
         private static double Cell(JsonElement row, int column) =>
-            column >= 0 && column < row.GetArrayLength() ? row[column].GetDouble() : 0;
+            column >= 0 && column < row.GetArrayLength()
+            && row[column].ValueKind == JsonValueKind.Number
+                ? row[column].GetDouble()
+                : 0;
     }
 }
