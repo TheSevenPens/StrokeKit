@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Avalonia;
 using StrokeFieldGuide.Canvas;
 using Avalonia.Controls;
@@ -14,6 +15,11 @@ using WinPenKit;
 
 namespace StrokeFieldGuide.Lab;
 
+[SuppressMessage("Usage", "CA1001:Types that own disposable fields should be disposable",
+    Justification =
+        "A window releases what it owns when it closes, which is what the Closed handler " +
+        "does. IDisposable would say a caller should dispose the window; nothing does that, " +
+        "so it would be a second release path nobody calls.")]
 public partial class MainWindow : Window
 {
     /// <summary>
