@@ -13,7 +13,15 @@ namespace StrokeFieldGuide.Brushes;
 /// </summary>
 public interface ILive : IDisposable
 {
-    /// <summary>Lays whatever is new since the last call, and answers how many that was.</summary>
+    /// <summary>
+    /// Lays whatever is new since the last call, and answers how many that was.
+    /// </summary>
+    /// <remarks>
+    /// <b>Each call must be given the same stroke, grown.</b> What is passed has to begin
+    /// with everything passed before it: this lays only the readings it has not seen, so a
+    /// shorter stroke, or a different one, is not drawn and not refused — it simply comes out
+    /// wrong. See <see cref="Wet.Extend"/>, which says what happens when it is not.
+    /// </remarks>
     int Extend(Stroke sofar);
 
     /// <summary>What the reader should be looking at now.</summary>
@@ -125,6 +133,22 @@ public sealed class Wet : ILive
     /// </summary>
     public int Extend(Stroke sofar)
     {
+        // The contract, checked rather than assumed. Everything below lays only what it has
+        // not seen, which is legal exactly because the stamps of a stroke so far are a prefix
+        // of the finished one's -- and that holds only if the stroke itself keeps growing
+        // from the same beginning. Given a shorter stroke, the walk would carry on from a
+        // position the path no longer reaches and lay stamps in mid air.
+        //
+        // Refused rather than handled: a caller doing this has lost track of which stroke it
+        // is drawing, and quietly starting again would hide that.
+        if (sofar.Count < _readings)
+        {
+            throw new ArgumentException(
+                $"a stroke being drawn can only grow: this had {_readings} readings and has "
+                + $"been given {sofar.Count}. Use a new Wet for a new stroke.",
+                nameof(sofar));
+        }
+
         // Only the readings that are new, and only the segments they added. Recomputing the
         // whole path's stamps each time would be linear per call and quadratic over the
         // stroke -- the same shape as redrawing it, arrived at by recomputation rather than

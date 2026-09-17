@@ -62,7 +62,28 @@ public static class Recorded
     /// that silently shrinks when one is renamed, and these are evidence: the folder is the
     /// list.
     /// </remarks>
-    public static IReadOnlyList<Fixture> All => Read(Root());
+    public static IReadOnlyList<Fixture> All => _all ??= Read(Root());
+
+    /// <summary>
+    /// The corpus, read once.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <c>All</c> was expression-bodied, so every use reread and reparsed all 33 files. That
+    /// is a hundred-odd strokes rebuilt to answer a question about one, and the cost is
+    /// multiplied by anything that asks inside a loop — <c>RecordedTests</c> did exactly that,
+    /// reparsing the whole corpus once per stroke it checked.
+    /// </para>
+    /// <para>
+    /// Held for the life of the process rather than cached with an expiry, because the corpus
+    /// is a pinned submodule: it does not change while something is running. <see cref="Reread"/>
+    /// is there for a tool that puts a file in the folder and wants to see it.
+    /// </para>
+    /// </remarks>
+    private static IReadOnlyList<Fixture>? _all;
+
+    /// <summary>Forgets the loaded corpus, so the next use reads the folder again.</summary>
+    public static void Reread() => _all = null;
 
     /// <summary>
     /// A handful of recorded strokes, each the most extreme of the corpus on one axis.

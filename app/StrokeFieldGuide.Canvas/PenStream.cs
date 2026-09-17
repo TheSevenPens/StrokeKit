@@ -163,11 +163,27 @@ public sealed class PenStream : IDisposable
     /// Takes whatever the session has, and stamps the whole batch with one arrival time.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// <b>One stamp for the batch, deliberately.</b> Every reading that came across together
     /// genuinely arrived together -- they were sitting in the driver's queue and were handed
     /// over in one call -- so giving each its own timestamp would invent a spread that the
     /// delivery did not have. Stamping once makes "did these arrive together?" an equality
     /// check rather than an argument about the clock's resolution.
+    /// </para>
+    /// <para>
+    /// <b>Stamped before anything else is told.</b> The <see cref="Drained"/> event used to
+    /// be raised first, so a subscriber updating a gauge or laying out a control did its work
+    /// inside the measurement: the timestamp said when the application got round to stamping
+    /// rather than when the batch came over. Nothing here may run between the drain and the
+    /// stamp.
+    /// </para>
+    /// <para>
+    /// <b>What it is a time of.</b> This is the <i>drain observation</i>: when this
+    /// application took the batch out of the session's queue. It is not when each packet
+    /// reached the driver, and it is not when the pen reported. Those are the device's
+    /// business and only the pen's own timestamp speaks to them -- badly, since it is a
+    /// packet counter.
+    /// </para>
     /// </remarks>
     private void Drain()
     {
@@ -175,11 +191,13 @@ public sealed class PenStream : IDisposable
 
         var points = session.DrainPoints();
 
+        // Immediately, and before any subscriber is given the chance to do work.
+        var arrived = Arrival();
+
         Drained?.Invoke(this, points.Length);
 
         if (points.Length == 0) return;
 
-        var arrived = Arrival();
         var readings = new Reading[points.Length];
 
         for (var each = 0; each < points.Length; each++) readings[each] = Of(points[each], arrived);

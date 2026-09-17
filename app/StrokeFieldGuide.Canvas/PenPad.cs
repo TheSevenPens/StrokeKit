@@ -27,7 +27,7 @@ namespace StrokeFieldGuide.Canvas;
 /// readings, and when.
 /// </para>
 /// </remarks>
-public sealed class PenPad : Decorator
+public sealed class PenPad : Decorator, IDisposable
 {
     private Surface _art;
     private readonly SurfaceView _view;
@@ -60,6 +60,15 @@ public sealed class PenPad : Decorator
     public Surface Surface => _art;
 
     public SurfaceView View => _view;
+
+    /// <summary>
+    /// Raised before the pad grows, while the surface it is replacing is still alive.
+    /// </summary>
+    /// <remarks>
+    /// The one chance anything holding that surface has to finish with it. A live stroke is
+    /// laying ink onto it, and <see cref="Grew"/> arrives too late to be told.
+    /// </remarks>
+    public event EventHandler? Growing;
 
     /// <summary>Raised after the pad has grown, because the old surface is gone by then.</summary>
     public event EventHandler? Grew;
@@ -184,6 +193,15 @@ public sealed class PenPad : Decorator
 
         var grown = _art.Grown(wide, high, wide, high);
 
+        // Said before the old surface is released, not after.
+        //
+        // Grew announced a surface that had already been disposed, which was harmless while
+        // the only listeners redrew from scratch. It stops being harmless the moment anything
+        // is mid-stroke on this pad: a live stroke holds the surface it is laying ink onto,
+        // and by the time it heard, that surface was gone. Told first, a listener can finish
+        // or abandon what it is drawing while the target is still there.
+        Growing?.Invoke(this, EventArgs.Empty);
+
         _art.Dispose();
         _art = grown;
 
@@ -193,5 +211,27 @@ public sealed class PenPad : Decorator
         _view.SetView(Views.View.At(1));
 
         Grew?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>
+    /// Releases the surface this pad made.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A surface holds an <c>SKSurface</c>, which holds pixels the garbage collector is in no
+    /// hurry over. This pad creates one, replaces it as it grows, and disposed every
+    /// replacement — but had no way to release the last one, so the final surface of every
+    /// pad ever shown was simply left. The recorder's close handler closed its pen session
+    /// and nothing else.
+    /// </para>
+    /// <para>
+    /// <b>Owner-driven, and not on detach.</b> A pad taken off screen and put back is an
+    /// ordinary thing; disposing on that would destroy a drawing for being briefly invisible.
+    /// Whoever created the pad says when it is finished with.
+    /// </para>
+    /// </remarks>
+    public void Dispose()
+    {
+        _art.Dispose();
     }
 }

@@ -18,6 +18,21 @@ namespace StrokeFieldGuide.Strokes;
 /// </summary>
 public sealed class Stroke
 {
+    /// <summary>
+    /// A stroke over a list the caller keeps.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The list is borrowed, not copied.</b> A stroke still arriving is one the caller
+    /// appends to between calls, and copying on every reading would be quadratic over the
+    /// stroke — the exact cost <c>incremental-drawing</c> exists to avoid. So a stroke built
+    /// this way is a <i>view</i> of the caller's list and changes when the caller does.
+    /// </para>
+    /// <para>
+    /// That is fine for the thing being drawn and wrong for anything kept. Use
+    /// <see cref="Finished"/> for a stroke that must not change under whoever is holding it.
+    /// </para>
+    /// </remarks>
     public Stroke(IReadOnlyList<Reading> points)
     {
         if (points.Count == 0) throw new ArgumentException("a stroke has at least one point", nameof(points));
@@ -25,7 +40,22 @@ public sealed class Stroke
         Points = points;
     }
 
-    /// <summary>In the order they arrived. Never reordered, never deduplicated.</summary>
+    /// <summary>
+    /// A stroke that cannot change, whatever the caller does to the list afterwards.
+    /// </summary>
+    /// <remarks>
+    /// For anything that outlives the drawing of it: a recording being kept, a fixture, a
+    /// stroke handed to something that will read it later. The copy is the point, and one
+    /// copy at the end is nothing beside a copy per reading.
+    /// </remarks>
+    public static Stroke Finished(IReadOnlyList<Reading> points) => new([.. points]);
+
+    /// <summary>
+    /// In the order they arrived. Never reordered, never deduplicated.
+    /// </summary>
+    /// <remarks>
+    /// Borrowed unless this stroke was made by <see cref="Finished"/>. See the constructor.
+    /// </remarks>
     public IReadOnlyList<Reading> Points { get; }
 
     public int Count => Points.Count;
