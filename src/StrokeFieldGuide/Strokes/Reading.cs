@@ -64,6 +64,21 @@ namespace StrokeFieldGuide.Strokes;
 /// degree apart and subtracting them says 359.
 /// </para>
 /// </param>
+/// <param name="Status">
+/// The device's own status word, unread and undecoded.
+/// <para>
+/// Kept raw and kept whole because the two questions it answers are both questions about
+/// what the bits <b>mean</b>, and a field that stored somebody's interpretation would be
+/// unable to answer either. On Wintab it is <c>pkStatus</c>: bit 0 is documented as
+/// proximity and does not behave as the obvious reading of that would suggest, and bit 1 is
+/// a queue overflow that nothing has ever checked and that would look exactly like a device
+/// falling silent.
+/// </para>
+/// <para>
+/// Zero on every backend that reports no such thing, which is all of them but Wintab, and
+/// zero is then "not reported" rather than "all clear".
+/// </para>
+/// </param>
 /// <param name="Twist">
 /// Degrees of barrel rotation, absolute and wrapping: measured on a Cintiq 24 through Wintab
 /// on 16 Sep 2026 as a full 0 to 359. So zero is an orientation the pen can actually be at,
@@ -75,6 +90,8 @@ public readonly record struct Reading(
     double Y,
     uint Pressure,
     long At = 0,
+    double Height = 0,
+    uint Status = 0,
     double Lean = 0,
     double Azimuth = 0,
     double Twist = 0)
