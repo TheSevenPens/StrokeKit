@@ -278,6 +278,7 @@ public static class TraceFormat
         public const string OffThePad = "readingsDroppedForBeingOffThePad";
         public const string AfterTheStop = "readingsAfterTheRecordingStopped";
         public const string AirborneNotKept = "readingsAirborneAndNotKept";
+        public const string AirborneKeptAlongside = "readingsAirborneKeptWithAStroke";
 
         public const string Counted = "whatTheSessionCounted";
         public const string FromDriver = "packetsFromTheDriver";
