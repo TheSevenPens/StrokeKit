@@ -93,4 +93,47 @@ public static class Traces
                 ? (IReadOnlyList<Reading>)[.. rows.EnumerateArray().Select(layout.Of)]
                 : [])];
     }
+
+    /// <summary>
+    /// Where the traces are, found by walking up from wherever this is running.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Walked up to rather than configured, because a test host, a recorder and a tool each
+    /// run from a different place and none of them is the repository root.
+    /// </para>
+    /// <para>
+    /// <b>Here rather than beside the corpus it usually finds.</b> Knowing where a folder of
+    /// traces is has nothing to do with the book that publishes one: a recorder wants it to
+    /// read back what it wrote, and asking it to depend on a guide for a directory walk is a
+    /// dependency out of all proportion to what it buys.
+    /// </para>
+    /// <para>
+    /// <c>corpus/traces</c> first, because that is a submodule of the published corpus and is
+    /// what a checkout with one will have. A bare <c>traces/</c> is still accepted: it is
+    /// where recordings lived before the corpus was published, and where a recorder writing
+    /// its own puts them.
+    /// </para>
+    /// </remarks>
+    public static string? Folder()
+    {
+        var at = new DirectoryInfo(AppContext.BaseDirectory);
+
+        while (at is not null)
+        {
+            foreach (var folder in Folders)
+            {
+                var here = Path.Combine(at.FullName, folder);
+
+                if (Directory.Exists(here)) return here;
+            }
+
+            at = at.Parent;
+        }
+
+        return null;
+    }
+
+    /// <summary>The folder names looked for, in the order they are tried.</summary>
+    public static readonly string[] Folders = ["corpus/traces", "traces"];
 }
