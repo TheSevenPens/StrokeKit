@@ -38,7 +38,7 @@ namespace StrokeKit.Avalonia;
         "disposable here, the surface, is borrowed and deliberately never disposed.")]
 public sealed class SurfaceView : Control
 {
-    private Surface _art;
+    private Surface? _art;
 
     private WriteableBitmap? _shown;
 
@@ -60,15 +60,41 @@ public sealed class SurfaceView : Control
     /// <summary>Whether a "the frame is done" notification is already on its way.</summary>
     private bool _reporting;
 
-    public SurfaceView(Surface art)
+    /// <summary>
+    /// A view with nothing to show yet.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// For a consumer that writes its canvas in XAML, where a control has to be constructible
+    /// without arguments, and hands over a surface afterwards with <see cref="Show"/>.
+    /// </para>
+    /// <para>
+    /// <b>This exists because a third application found the assumption.</b> The two that shaped
+    /// this kit both build their canvas in code -- <see cref="PenPad"/> constructs one and a
+    /// window inserts it -- so nothing here had ever needed to exist before it had a surface.
+    /// An application whose canvas is declared in markup cannot do that, and had no way in.
+    /// </para>
+    /// <para>
+    /// A view with no surface renders nothing rather than throwing. Asking it for
+    /// <see cref="Surface"/> before giving it one does throw, because that is a mistake rather
+    /// than a state worth reporting.
+    /// </para>
+    /// </remarks>
+    public SurfaceView()
     {
-        _art = art;
         ClipToBounds = true;
         Focusable = true;
     }
 
+    public SurfaceView(Surface art) : this() => _art = art;
+
     /// <summary>The surface being shown. Exposed so a test can compare a frame against it.</summary>
-    public Surface Surface => _art;
+    /// <exception cref="InvalidOperationException">Before a surface has been given.</exception>
+    public Surface Surface => _art ?? throw new InvalidOperationException(
+        "This view has not been shown a surface yet. Construct it with one, or call Show.");
+
+    /// <summary>Whether there is anything to show, for a view built before its surface.</summary>
+    public bool HasSurface => _art is not null;
 
     /// <summary>
     /// Shows a different surface. The one being replaced is not disposed, for the same
@@ -180,7 +206,7 @@ public sealed class SurfaceView : Control
     {
         var (width, height) = Presentation.PixelSize(Bounds.Width, Bounds.Height, RenderScale);
 
-        SetView(View.Centred(View.Zoom, _art.PixelWidth, _art.PixelHeight, width, height));
+        SetView(View.Centred(View.Zoom, Surface.PixelWidth, Surface.PixelHeight, width, height));
     }
 
     /// <summary>Zoom out, if needed, until the whole surface is in the window.</summary>
@@ -188,7 +214,7 @@ public sealed class SurfaceView : Control
     {
         var (width, height) = Presentation.PixelSize(Bounds.Width, Bounds.Height, RenderScale);
 
-        SetView(View.Fitting(_art.PixelWidth, _art.PixelHeight, width, height));
+        SetView(View.Fitting(Surface.PixelWidth, Surface.PixelHeight, width, height));
     }
 
     protected override void OnKeyDown(KeyEventArgs e)
@@ -284,6 +310,10 @@ public sealed class SurfaceView : Control
     // beginning Avalonia resolves to StrokeKit.Avalonia and not to the framework.
     public override void Render(global::Avalonia.Media.DrawingContext context)
     {
+        // Nothing to draw yet, which is an ordinary state for a view built in markup and
+        // given its surface afterwards -- not a fault worth throwing over.
+        if (_art is null) return;
+
         var clock = System.Diagnostics.Stopwatch.StartNew();
 
         var scale = RenderScale;
@@ -455,6 +485,6 @@ public sealed class SurfaceView : Control
         using var surface = SKSurface.Create(info, locked.Address, locked.RowBytes)
             ?? throw new InvalidOperationException("could not draw into the presented bitmap");
 
-        Presenter.Present(_art, surface.Canvas, View);
+        Presenter.Present(Surface, surface.Canvas, View);
     }
 }
