@@ -152,6 +152,24 @@ public sealed class SurfaceView : Control
     public bool DragPans { get; set; } = true;
 
     /// <summary>
+    /// Whether a change of viewport holds the surface point that was in the middle of it.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Right for a document being read: growing the window should not slide what you were
+    /// looking at. Wrong for a bench that pins the surface origin to the viewport origin and
+    /// never scrolls, where re-centring silently pans the drawing away from where it was put.
+    /// </para>
+    /// <para>
+    /// Found by an application that shows a stroke at 1:1 with no panning at all, and whose
+    /// ink left the viewport when its window was moved. <see cref="DragPans"/> is a separate
+    /// question: one is whether the reader may pan, the other is whether the view moves on
+    /// its own.
+    /// </para>
+    /// </remarks>
+    public bool KeepsCentre { get; set; } = true;
+
+    /// <summary>
     /// Whether the space bar is held, while this control has the focus.
     /// <para>
     /// Handled by the canvas rather than by the window. Intercepting it at the window was
@@ -417,7 +435,10 @@ public sealed class SurfaceView : Control
         var first = _lastWidth == 0 && _lastHeight == 0;
         if (!first && scale == _lastScale && width == _lastWidth && height == _lastHeight) return;
 
-        if (!first) View = Presentation.KeepingCentre(View, _lastWidth, _lastHeight, width, height);
+        if (!first && KeepsCentre)
+        {
+            View = Presentation.KeepingCentre(View, _lastWidth, _lastHeight, width, height);
+        }
 
         _lastScale = scale;
         _lastWidth = width;
