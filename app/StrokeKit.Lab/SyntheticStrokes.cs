@@ -1,8 +1,8 @@
 using SkiaSharp;
-using StrokeFieldGuide.Brushes;
-using StrokeFieldGuide.Figures;
-using StrokeFieldGuide.Strokes;
-using StrokeFieldGuide.Surfaces;
+using StrokeKit.Brushes;
+using StrokeKit.Figures;
+using StrokeKit.Strokes;
+using StrokeKit.Surfaces;
 
 namespace StrokeFieldGuide.Lab;
 
@@ -136,6 +136,6 @@ public static class SyntheticStrokes
     private static void Lay(
         Surface art, InkTransform transform, Brush brush, IReadOnlyList<Reading> readings)
     {
-        foreach (var stroke in Strokes.Strokes.From(readings)) brush.Draw(art, transform, stroke);
+        foreach (var stroke in Strokes.From(readings)) brush.Draw(art, transform, stroke);
     }
 }

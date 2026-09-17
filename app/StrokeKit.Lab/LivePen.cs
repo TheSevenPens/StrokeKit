@@ -1,6 +1,7 @@
 using StrokeFieldGuide.Brushes;
-using StrokeFieldGuide.Strokes;
-using StrokeFieldGuide.Surfaces;
+using StrokeKit.Brushes;
+using StrokeKit.Strokes;
+using StrokeKit.Surfaces;
 
 namespace StrokeFieldGuide.Lab;
 

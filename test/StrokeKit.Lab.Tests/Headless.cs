@@ -1,7 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
-using StrokeFieldGuide.Canvas;
+using StrokeKit.Avalonia;
 using StrokeFieldGuide.Lab;
 using StrokeFieldGuide.Lab.Tests;
 

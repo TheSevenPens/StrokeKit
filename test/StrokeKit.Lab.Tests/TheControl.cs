@@ -1,4 +1,4 @@
-using StrokeFieldGuide.Canvas;
+using StrokeKit.Avalonia;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
@@ -6,7 +6,7 @@ using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Input;
 using Avalonia.Threading;
-using StrokeFieldGuide.Views;
+using StrokeKit.Views;
 
 namespace StrokeFieldGuide.Lab.Tests;
 

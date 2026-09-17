@@ -1,9 +1,9 @@
 using SkiaSharp;
-using StrokeFieldGuide.Brushes;
-using StrokeFieldGuide.Figures;
-using StrokeFieldGuide.Strokes;
-using StrokeFieldGuide.Surfaces;
-using StrokeFieldGuide.Views;
+using StrokeKit.Brushes;
+using StrokeKit.Figures;
+using StrokeKit.Strokes;
+using StrokeKit.Surfaces;
+using StrokeKit.Views;
 
 namespace StrokeFieldGuide.Lab;
 
@@ -327,7 +327,7 @@ public static class SelfTest
         using var art = Surface.Create(240, 120, 1);
         art.Canvas.Clear(SKColors.Transparent);
 
-        var strokes = Strokes.Strokes.From(Synthetic.Line(fromX, atY, fromX + length, atY, 41));
+        var strokes = Strokes.From(Synthetic.Line(fromX, atY, fromX + length, atY, 41));
         if (strokes.Count != 1) return $"{strokes.Count} strokes came out of one contact";
 
         var brush = new Brush(diameter, SKColors.Black, spacing);

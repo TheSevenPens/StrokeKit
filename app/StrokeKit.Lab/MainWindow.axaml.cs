@@ -1,16 +1,17 @@
 using System.Diagnostics.CodeAnalysis;
 using Avalonia;
-using StrokeFieldGuide.Canvas;
+using StrokeKit.Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using StrokeFieldGuide.Brushes;
-using StrokeFieldGuide.Figures;
-using StrokeFieldGuide.Strokes;
-using StrokeFieldGuide.Surfaces;
-using StrokeFieldGuide.Views;
+using StrokeKit.Brushes;
+using StrokeKit.Figures;
+using StrokeKit.Strokes;
+using StrokeKit.Surfaces;
+using StrokeKit.Views;
 using WinPenKit;
 
 namespace StrokeFieldGuide.Lab;

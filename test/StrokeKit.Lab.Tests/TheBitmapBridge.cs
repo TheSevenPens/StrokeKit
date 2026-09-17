@@ -3,8 +3,8 @@ using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Threading;
 using SkiaSharp;
-using StrokeFieldGuide.Surfaces;
-using StrokeFieldGuide.Views;
+using StrokeKit.Surfaces;
+using StrokeKit.Views;
 
 namespace StrokeFieldGuide.Lab.Tests;
 

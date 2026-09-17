@@ -1,8 +1,8 @@
 using Avalonia.Headless;
 using Avalonia.Threading;
 using Avalonia.Headless.XUnit;
-using StrokeFieldGuide.Figures;
-using StrokeFieldGuide.Views;
+using StrokeKit.Figures;
+using StrokeKit.Views;
 
 namespace StrokeFieldGuide.Lab.Tests;
 
