@@ -173,6 +173,36 @@ public readonly record struct Brush(
     }
 
     /// <summary>
+    /// The same brush, reading a device whose full scale is not the one it was written
+    /// against.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>A reading does not carry its own range.</b> <c>Reading.Pressure</c> is a raw count
+    /// and what it means depends entirely on the device: the presets here are written against
+    /// <see cref="Presets.Range"/>, which is 1024, and the tablet this guide measures reports
+    /// 32767. A preset handed a real pen without this draws at a thirty-second of the
+    /// pressure the hand is applying, and does it quietly -- the marks come out, they are just
+    /// all at the thin end.
+    /// </para>
+    /// <para>
+    /// <b>The range moves and the endpoints do not.</b> A width of <c>(0.25, 36)</c> means
+    /// "0.25 units at no pressure and 36 at full", and that is the same sentence whatever
+    /// number the device calls full. So this rewrites the scale each driven property reads
+    /// against and leaves every diameter, alpha and curve exactly as the preset states them.
+    /// </para>
+    /// <para>
+    /// Every driven property, not one: size and ink reading the same pen against different
+    /// scales is the first thing <c>brush-control-contract</c> refuses.
+    /// </para>
+    /// </remarks>
+    public Brush Ranged(uint range) => this with
+    {
+        Width = Width is { } width ? width with { Range = range } : null,
+        Flow = Flow is { } flow ? flow with { Range = range } : null,
+    };
+
+    /// <summary>
     /// The gap to leave after a stamp, which is the whole of what <see cref="SpacedBy"/>
     /// decides.
     /// </summary>

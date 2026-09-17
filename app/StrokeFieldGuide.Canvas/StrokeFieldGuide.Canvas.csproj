@@ -25,6 +25,14 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\StrokeFieldGuide\StrokeFieldGuide.csproj" />
+
+    <!--
+      The pen backends live here rather than in an application because there is now more
+      than one application that opens a session. WinPenKit.Avalonia is named rather than
+      WinPenKit alone, because the Avalonia pointer session is one of the backends offered
+      and it is the one that needs a Control.
+    -->
+    <ProjectReference Include="..\..\..\WinPenKit\WinPenKit.Avalonia\WinPenKit.Avalonia.csproj" />
   </ItemGroup>
 
 </Project>
