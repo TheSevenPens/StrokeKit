@@ -62,7 +62,7 @@ public static class Recorded
     /// that silently shrinks when one is renamed, and these are evidence: the folder is the
     /// list.
     /// </remarks>
-    public static IReadOnlyList<Fixture> All => _all ??= Read(Root());
+    public static IReadOnlyList<Fixture> All => _all ??= Strictly(Root());
 
     /// <summary>
     /// The corpus, read once.
@@ -181,28 +181,76 @@ public static class Recorded
             fixture.Readings.Max(reading => reading.X),
             fixture.Readings.Max(reading => reading.Y)) + Inset));
 
-    /// <summary>Every stroke of every trace under one folder.</summary>
-    public static IReadOnlyList<Fixture> Read(string? folder)
+    /// <summary>What one read of a folder found, and what it could not use.</summary>
+    /// <param name="Fixtures">Every stroke it could read, longest file first.</param>
+    /// <param name="Rejected">The files it could not, and why.</param>
+    public readonly record struct Loaded(
+        IReadOnlyList<Fixture> Fixtures,
+        IReadOnlyList<(string Trace, string Why)> Rejected);
+
+    /// <summary>
+    /// The pinned corpus, which is not allowed to contain a file this reader cannot read.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Strict, unlike <see cref="Read"/>, because this folder is a pinned submodule and every
+    /// file in it arrived by a commit in this repository that said so. A trace here that
+    /// cannot be read is a broken checkout or a bad merge, and skipping it quietly means the
+    /// suite runs against a smaller corpus than it reports — the failure being invisible is
+    /// worse than the failure.
+    /// </para>
+    /// <para>
+    /// A folder that is absent entirely is not an error: a tool can run from somewhere with no
+    /// corpus beside it, and gets an empty list.
+    /// </para>
+    /// </remarks>
+    private static IReadOnlyList<Fixture> Strictly(string? folder)
     {
-        if (folder is null || !Directory.Exists(folder)) return [];
+        var loaded = Load(folder);
+
+        if (loaded.Rejected.Count > 0)
+        {
+            throw new InvalidOperationException(
+                $"The pinned corpus at {folder} has {loaded.Rejected.Count} file(s) this "
+                + "reader cannot read: "
+                + string.Join("; ", loaded.Rejected.Select(bad => $"{bad.Trace} ({bad.Why})")));
+        }
+
+        return loaded.Fixtures;
+    }
+
+    /// <summary>Every stroke of every trace under one folder, skipping what will not read.</summary>
+    /// <remarks>
+    /// For a folder nobody has vetted — somewhere recordings are being imported or looked
+    /// through. The pinned corpus is read by <see cref="All"/> and refuses what this tolerates.
+    /// </remarks>
+    public static IReadOnlyList<Fixture> Read(string? folder) => Load(folder).Fixtures;
+
+    /// <summary>Every stroke of every trace under one folder, and every file that would not read.</summary>
+    public static Loaded Load(string? folder)
+    {
+        if (folder is null || !Directory.Exists(folder)) return new([], []);
 
         var fixtures = new List<Fixture>();
+        var rejected = new List<(string, string)>();
 
         foreach (var path in Directory.EnumerateFiles(folder, "*.json").Order())
         {
             var take = Path.GetFileNameWithoutExtension(path);
 
-            // A trace this reader cannot make sense of is skipped rather than thrown on. The
-            // folder is evidence and will accumulate files nobody planned for; one of them
-            // must not take the whole corpus down.
             IReadOnlyList<IReadOnlyList<Reading>> strokes;
 
             try
             {
                 strokes = Traces.Read(path);
             }
-            catch (Exception)
+            catch (Exception bad)
             {
+                // Named rather than swallowed. The folder is evidence and will accumulate
+                // files nobody planned for; one of them must not take the whole corpus down,
+                // but nor should it leave without a word.
+                rejected.Add((Path.GetFileName(path), bad.Message));
+
                 continue;
             }
 
@@ -217,11 +265,12 @@ public static class Recorded
                 fixtures.Add(new Fixture(
                     $"rec-{Short(take)}-{each + 1}",
                     $"a stroke drawn by a hand: {Says(readings)}",
-                    readings));
+                    readings,
+                    new Source(Path.GetFileName(path), each + 1)));
             }
         }
 
-        return fixtures;
+        return new(fixtures, rejected);
     }
 
     /// <summary>

@@ -2,6 +2,29 @@
 namespace StrokeFieldGuide.Strokes;
 
 /// <summary>
+/// Which contact of which trace a recorded fixture was read from.
+/// </summary>
+/// <remarks>
+/// <para>
+/// Kept so that a fixture can be matched back to the reading it came from <b>by identity</b>.
+/// Without it the only way to pair the two was to look for a fixture with the same reading
+/// count and the same first and last pressure — three numbers that different contacts can
+/// share, and that say nothing when they do not match.
+/// </para>
+/// <para>
+/// That mattered: the check that the corpus is translated and never scaled paired them that
+/// way and skipped any contact it could not place, so it would have passed having compared one
+/// stroke out of two hundred and said nothing about the rest.
+/// </para>
+/// </remarks>
+/// <param name="Trace">The file, as it sits in the corpus folder.</param>
+/// <param name="Contact">Which stroke of that file, counted from one.</param>
+public sealed record Source(string Trace, int Contact)
+{
+    public override string ToString() => $"{Trace}#{Contact}";
+}
+
+/// <summary>
 /// One stroke from the corpus, with the reason it is in it.
 /// </summary>
 /// <param name="Name">
@@ -18,7 +41,15 @@ namespace StrokeFieldGuide.Strokes;
 /// would not. Required, because a fixture nobody can say that about is a fixture that grew
 /// out of whatever the last check happened to need.
 /// </param>
-public sealed record Fixture(string Name, string Exposes, IReadOnlyList<Reading> Readings)
+/// <param name="From">
+/// The contact this was made from, for a fixture read off a recording, and null for a
+/// generated one.
+/// </param>
+public sealed record Fixture(
+    string Name,
+    string Exposes,
+    IReadOnlyList<Reading> Readings,
+    Source? From = null)
 {
     /// <summary>
     /// The stroke these readings make.
