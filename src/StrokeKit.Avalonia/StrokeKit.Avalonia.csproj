@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The Avalonia half of the kit: the control that puts a Surface on screen, the pad that is
+    drawn into, and the stream that opens a pen session and polls it.
+
+    It exists because more than one application needs those: the Lab, which draws synthetic
+    strokes to show what the kit does, and the Recorder, which captures real ones. The second
+    application is what turned one control in one window into a shared thing rather than a
+    copy.
+
+    StrokeKit itself stays free of Avalonia on purpose (see its csproj), so this is the
+    boundary where the framework enters. Named the way WinPenKit names its own adapter, and
+    split the same way, because it is the same arrangement.
+  -->
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <RootNamespace>StrokeKit.Avalonia</RootNamespace>
+    <AssemblyName>StrokeKit.Avalonia</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="$(AvaloniaVersion)" />
+    <PackageReference Include="Avalonia.Skia" Version="$(AvaloniaVersion)" />
+    <PackageReference Include="SkiaSharp" Version="$(SkiaSharpVersion)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\StrokeKit\StrokeKit.csproj" />
+
+    <!--
+      The pen backends live here rather than in an application because there is now more
+      than one application that opens a session. WinPenKit.Avalonia is named rather than
+      WinPenKit alone, because the Avalonia pointer session is one of the backends offered
+      and it is the one that needs a Control.
+    -->
+    <ProjectReference Include="..\..\..\WinPenKit\WinPenKit.Avalonia\WinPenKit.Avalonia.csproj" />
+  </ItemGroup>
+
+</Project>
