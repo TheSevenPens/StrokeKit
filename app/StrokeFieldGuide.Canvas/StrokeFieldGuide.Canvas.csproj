@@ -24,7 +24,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\StrokeFieldGuide\StrokeFieldGuide.csproj" />
+    <ProjectReference Include="..\..\src\StrokeFieldGuide.Drawing\StrokeFieldGuide.Drawing.csproj" />
 
     <!--
       The pen backends live here rather than in an application because there is now more
