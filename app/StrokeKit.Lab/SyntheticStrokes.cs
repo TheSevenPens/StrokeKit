@@ -53,10 +53,10 @@ public static class SyntheticStrokes
         // Same brush, same spacing, same path: the difference is only where the stamps meet.
         var wash = new SKColor(0x8A, 0x4B, 0x12).WithAlpha(0x40);
 
-        Lay(art, transform, new Brush(34, wash, 3, Buildup.PerStamp),
+        Lay(art, transform, new Brush(34, wash, 3, Buildup: Buildup.PerStamp),
             Synthetic.Line(120, 430, 880, 430, 200));
 
-        Lay(art, transform, new Brush(34, wash, 3, Buildup.OncePerStroke),
+        Lay(art, transform, new Brush(34, wash, 3, Buildup: Buildup.OncePerStroke),
             Synthetic.Line(120, 510, 880, 510, 200));
 
         // A pressure ramp, twice. Same width either way; the per-stamp one darkens as it
@@ -70,15 +70,18 @@ public static class SyntheticStrokes
         // the fault come back.
         var nib = new Width(4, 30, 1024);
 
-        Lay(art, transform, new Brush(10, new SKColor(0x10, 0x2A, 0x33).WithAlpha(0x40), 3, Buildup.PerStamp, nib),
+        Lay(art, transform, new Brush(10, new SKColor(0x10, 0x2A, 0x33).WithAlpha(0x40), 3,
+                                Buildup: Buildup.PerStamp, Width: nib),
             Swell(120, 610, 880, 610, 100, 1000));
 
-        Lay(art, transform, new Brush(10, new SKColor(0x10, 0x2A, 0x33).WithAlpha(0x40), 3, Buildup.OncePerStroke, nib),
+        Lay(art, transform, new Brush(10, new SKColor(0x10, 0x2A, 0x33).WithAlpha(0x40), 3,
+                                Buildup: Buildup.OncePerStroke, Width: nib),
             Swell(120, 700, 880, 700, 100, 1000));
 
         // And one stroke that crosses itself, composited once: uniform through the crossing,
         // where per stamp it would darken there.
-        Lay(art, transform, new Brush(34, new SKColor(0x1E, 0x4D, 0x8A).WithAlpha(0x40), 3, Buildup.OncePerStroke),
+        Lay(art, transform, new Brush(34, new SKColor(0x1E, 0x4D, 0x8A).WithAlpha(0x40), 3,
+                                Buildup: Buildup.OncePerStroke),
             [.. Synthetic.Line(220, 780, 780, 940, 160), .. Synthetic.Line(780, 940, 220, 940, 160),
              .. Synthetic.Line(220, 940, 780, 780, 160)]);
     }
