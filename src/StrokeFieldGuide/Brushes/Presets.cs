@@ -67,10 +67,10 @@ public static class Presets
         "size and ink driven by the same pen through different curves, so the width comes on "
         + "early and the ink holds back -- which one shared curve could not say",
         new Brush(
-            36, SKColors.Black, 0.1, Buildup.OncePerStroke,
-            new Width(Thinnest, 36, Range, new Response(0.02, 1.0, 0.75)),
-            SpacedBy.Diameters,
-            new Flow(0.15, 1.0, Range, new Response(0.02, 1.0, 1.4))));
+            36, SKColors.Black, 0.1, Buildup: Buildup.OncePerStroke,
+            Width: new Width(Thinnest, 36, Range, new Response(0.02, 1.0, 0.75)),
+            SpacedBy: SpacedBy.Diameters,
+            Flow: new Flow(0.15, 1.0, Range, new Response(0.02, 1.0, 1.4))));
 
     /// <summary>
     /// A hard nib whose width follows the pen and whose ink does not, laid as one swept
@@ -91,9 +91,9 @@ public static class Presets
             // opaque marks composite to the same colour -- and OncePerStroke costs a surface
             // the size of the document for the length of the stroke. Measured at 256 MiB on
             // an 8192-square document, which is a great deal to spend on no difference.
-            Buildup.PerStamp,
-            new Width(Thinnest, 18, Range, new Response(0, 0.85, 1.4)),
-            SpacedBy.Distance, null, Engine.Taper));
+            Buildup: Buildup.PerStamp,
+            Width: new Width(Thinnest, 18, Range, new Response(0, 0.85, 1.4)),
+            SpacedBy: SpacedBy.Distance, Flow: null, Engine: Engine.Taper));
 
     /// <summary>
     /// A constant-width nib whose ink follows the pen, with a ceiling on how much of it the
@@ -107,13 +107,13 @@ public static class Presets
             42, SKColors.Black, 1,
             // Not a preference. The ceiling is only a ceiling because the stroke meets the
             // surface once: laid per stamp, the marks accumulate and pass it.
-            Buildup.OncePerStroke,
+            Buildup: Buildup.OncePerStroke,
             // Nothing drives the width. Said out loud because pressure driving size is the
             // ordinary case and this brush is defined by not doing it.
-            null,
-            SpacedBy.Distance,
-            new Flow(0.007, 0.35, Range, new Response(0.05, 0.7, 1)),
-            Engine.Taper));
+            Width: null,
+            SpacedBy: SpacedBy.Distance,
+            Flow: new Flow(0.007, 0.35, Range, new Response(0.05, 0.7, 1)),
+            Engine: Engine.Taper));
 
     /// <summary>
     /// The same engine as round dabs with the spacing walked apart, so the marks read as
@@ -125,12 +125,12 @@ public static class Presets
         + "than merely different -- and the only preset whose size keeps a floor no curve "
         + "could express",
         new Brush(
-            28, SKColors.Black, 1.0, Buildup.OncePerStroke,
+            28, SKColors.Black, 1.0, Buildup: Buildup.OncePerStroke,
             // The floor is a third of the size, so the beads never shrink to nothing however
             // lightly the pen is used. On the property rather than on the input, which is why
             // it stays a third however many inputs there come to be.
-            new Width(0.35 * 28, 28, Range, new Response(0, 1, 0.7)),
-            SpacedBy.Diameters));
+            Width: new Width(0.35 * 28, 28, Range, new Response(0, 1, 0.7)),
+            SpacedBy: SpacedBy.Diameters));
 
     /// <summary>Every preset, for a check that wants to state something about all of them.</summary>
     public static IReadOnlyList<Preset> All => [InkPen, Marker, RoundDabs, Beads];
