@@ -147,12 +147,14 @@ public partial class MainWindow : Window
             if (_pen.IsRunning) Disconnect(); else Connect();
         };
 
-        _pen.Arrived += (_, readings) =>
+        // One event, one batch, already stamped. Nothing this window does can land between
+        // the drain and the arrival time any more, which is the contract Draining keeps.
+        _pen.Drained += (_, batch) =>
         {
-            foreach (var reading in readings) Took(reading);
-        };
+            _batch = batch.Count;
 
-        _pen.Drained += (_, many) => _batch = many;
+            foreach (var reading in batch.Readings) Took(reading);
+        };
 
         // A pen out of range with the tip still down never reports a zero-pressure reading,
         // and a window that has lost focus stops being told anything at all. Either leaves a
