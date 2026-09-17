@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -28,6 +29,13 @@ namespace StrokeFieldGuide.Canvas;
 /// is checkable at no setup cost, and a window is not.
 /// </para>
 /// </summary>
+[SuppressMessage("Usage", "CA1001:Types that own disposable fields should be disposable",
+    Justification =
+        "The bitmap this owns is released in OnDetachedFromVisualTree, which is a control's " +
+        "lifetime. Implementing IDisposable would say the caller should dispose the control, " +
+        "and nothing in Avalonia does that -- so it would add a second release path that " +
+        "nobody calls and imply an ownership the visual tree actually has. The other " +
+        "disposable here, the surface, is borrowed and deliberately never disposed.")]
 public sealed class SurfaceView : Control
 {
     private Surface _art;
