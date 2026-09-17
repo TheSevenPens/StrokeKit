@@ -91,11 +91,24 @@ public readonly record struct Nib(double Ratio, double Degrees = 0, Held Held = 
     /// right. Only an oblique angle tells them apart.
     /// </para>
     /// </remarks>
-    public double AlongTravel(double travelDegrees)
+    public double AlongTravel(double travelDegrees) => Turned(Degrees - travelDegrees);
+
+    /// <summary>
+    /// The same extent, given the angle between the long axis and the travel directly.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="AlongTravel"/> takes that angle to be <c>Degrees - travel</c>, which is
+    /// true of a nib the hand holds at one angle and false of every other <see cref="Held"/>:
+    /// a nib turned to the path is at a constant angle to it, so its extent along the travel
+    /// does not change at all, and a nib turned to the lean is at whatever angle the hand is
+    /// holding it at. A caller that already knows where the nib is pointing -- which the
+    /// brush does, because it lays the stamp -- subtracts for itself and asks this.
+    /// </remarks>
+    public double Turned(double betweenDegrees)
     {
         if (IsRound) return 1;
 
-        var t = (Degrees - travelDegrees) * Math.PI / 180;
+        var t = betweenDegrees * Math.PI / 180;
         var ratio = Math.Clamp(Ratio, 0.001, 1);
 
         return 1 / Math.Sqrt(Math.Pow(Math.Cos(t), 2) + Math.Pow(Math.Sin(t) / ratio, 2));

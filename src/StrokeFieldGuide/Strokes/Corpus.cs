@@ -164,6 +164,30 @@ public static class Corpus
         + "no difference to",
         Synthetic.Line(20, 120, 220, 120, 8));
 
+    // ------------------------------------------------- spacing, within a stroke
+
+    public static Fixture Quickened => new(
+        "syn-quickened",
+        "the step growing as the stroke goes: hurried and dawdled inside one stroke rather "
+        + "than as a pair of them. Anything whose behaviour depends on the distance between "
+        + "readings meets every distance here, in one mark",
+        Synthetic.Quickening(20, 120, 220, 120, 40, bias: 3));
+
+    public static Fixture Jolted => new(
+        "syn-jolted",
+        "one wide gap among even ones. Against quickened it separates a fault that needs a "
+        + "trend from a fault that needs a single step out of place, which a recording — where "
+        + "everything varies at once — cannot",
+        Then(Synthetic.Line(20, 120, 100, 120, 20),
+             Synthetic.Line(160, 120, 220, 120, 15)));
+
+    public static Fixture Stalled => new(
+        "syn-stalled",
+        "readings that do not move, and then do. The steps at the start are zero, not small, "
+        + "which is a division waiting to happen in anything that normalises a direction — and "
+        + "which nothing else generated here contains",
+        Synthetic.Stalled(60, 120, 220, 120, still: 12, moving: 20));
+
     public static Fixture Dawdled => new(
         "syn-dawdled",
         "the same path again, reported two hundred times. Against hurried it says whether a "
@@ -180,6 +204,7 @@ public static class Corpus
         Dot, Flick,
         Swell, TapOff, PressedInPlace,
         Hurried, Dawdled,
+        Quickened, Jolted, Stalled,
     ];
 
     /// <summary>

@@ -177,12 +177,52 @@ public readonly record struct Brush(
     /// decides.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// Measured from the stamp just laid rather than the one about to be. The next stamp's
     /// diameter depends on where it lands, which depends on this gap, so asking it first is
     /// a fixed point -- solved iteratively, for a difference below a pixel.
+    /// </para>
+    /// <para>
+    /// <b>Against the extent along the travel, not the diameter.</b> A diameter is how wide
+    /// the stamp is along its long axis, and a spacing in diameters means "this fraction of
+    /// the stamp I am about to leave behind" -- which is only the diameter when the stamp is
+    /// travelling along that axis. An elliptical nib going across itself is as narrow as
+    /// <see cref="Nib.Ratio"/> says, and leaving it a whole diameter of room is leaving it
+    /// <c>1 / Ratio</c> times the gap that was asked for. See <see cref="Nib.Turned"/>.
+    /// </para>
     /// </remarks>
     public double GapAfter(Stroke stroke, Placement placement) =>
-        SpacedBy == SpacedBy.Distance ? Spacing : Spacing * DiameterAt(stroke, placement);
+        SpacedBy == SpacedBy.Distance
+            ? Spacing
+            : Spacing * DiameterAt(stroke, placement) * ExtentAt(stroke, placement);
+
+    /// <summary>
+    /// How much of the stamp's diameter lies along the direction of travel, as a fraction.
+    /// </summary>
+    /// <remarks>
+    /// One for a round nib, which is the same width whichever way it goes, and one where the
+    /// segment has no length: a stamp on a reading that repeats its neighbour has no
+    /// direction to be measured against, and the honest answer is no correction rather than
+    /// a direction borrowed from somewhere else.
+    /// </remarks>
+    private double ExtentAt(Stroke stroke, Placement placement)
+    {
+        if (Nib is not { } nib || nib.IsRound) return 1;
+
+        var from = stroke.Points[placement.Segment];
+        var to = stroke.Points[Math.Min(placement.Segment + 1, stroke.Count - 1)];
+
+        var dx = to.X - from.X;
+        var dy = to.Y - from.Y;
+
+        if (dx == 0 && dy == 0) return 1;
+
+        // AngleAt is where the nib is actually pointing, whichever way it is held, so the
+        // difference is the angle between the long axis and the travel however the nib got
+        // there. Asking Nib.AlongTravel instead would be right for a nib held at a fixed
+        // angle and wrong for one turned to the path or to the lean.
+        return nib.Turned(AngleAt(stroke, placement) - Math.Atan2(dy, dx) * 180 / Math.PI);
+    }
 
     /// <summary>The walk this brush needs: one constant gap, or a gap per stamp.</summary>
     public Walk WalkAlong(Stroke stroke)
