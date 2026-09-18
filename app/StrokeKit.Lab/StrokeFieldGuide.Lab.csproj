@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+    <RootNamespace>StrokeFieldGuide.Lab</RootNamespace>
+    <AssemblyName>StrokeFieldGuide.Lab</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      Named backends rather than the Avalonia.Desktop metapackage, which also pulls the X11,
+      FreeDesktop and macOS subtrees this Windows-only application can never load. Avalonia
+      12 also split text shaping out of Skia: without Avalonia.HarfBuzz the application
+      throws "No text shaping system configured" at startup, and naming the other backends
+      does not register it. Both facts are WinPenKit's, paid for there and reused here.
+    -->
+    <PackageReference Include="Avalonia" Version="$(AvaloniaVersion)" />
+    <PackageReference Include="Avalonia.Win32" Version="$(AvaloniaVersion)" />
+    <PackageReference Include="Avalonia.Skia" Version="$(AvaloniaVersion)" />
+    <PackageReference Include="Avalonia.HarfBuzz" Version="$(AvaloniaVersion)" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="$(AvaloniaVersion)" />
+    <PackageReference Include="SkiaSharp" Version="$(SkiaSharpVersion)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\vendor\StrokeKit\src\StrokeKit\StrokeKit.csproj" />
+
+    <!--
+      The book, for the six named presets and nothing else. The lab is the guide's own
+      playground and lives in its repository permanently, so this is not the dependency that
+      mattered: the recorder is the one that must not reach the book, and it does not.
+    -->
+    <ProjectReference Include="..\..\src\StrokeFieldGuide\StrokeFieldGuide.csproj" />
+    <ProjectReference Include="..\..\vendor\StrokeKit\src\StrokeKit.Avalonia\StrokeKit.Avalonia.csproj" />
+  </ItemGroup>
+
+</Project>

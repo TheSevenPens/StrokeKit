@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>StrokeFieldGuide.Lab.Tests</RootNamespace>
+    <!-- xunit v3 runs as a program of its own. -->
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      xunit v3 here and v2 in the other test project, because Avalonia.Headless.XUnit 12.1.2
+      depends on xunit.v3. Two runners is a real cost and the alternative was worse: moving
+      the guide's own suite to v3 to satisfy a UI package it does not use.
+    -->
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+    <PackageReference Include="xunit.v3" Version="3.2.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5" />
+    <PackageReference Include="Avalonia.Headless" Version="$(AvaloniaVersion)" />
+    <PackageReference Include="Avalonia.Headless.XUnit" Version="$(AvaloniaVersion)" />
+    <PackageReference Include="Avalonia.Skia" Version="$(AvaloniaVersion)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\app\StrokeFieldGuide.Lab\StrokeFieldGuide.Lab.csproj" />
+  </ItemGroup>
+
+</Project>
