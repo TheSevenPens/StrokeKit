@@ -119,6 +119,26 @@ public partial class MainWindow : Window
         };
     }
 
+    /// <summary>Whether the kit has a live renderer for this brush's engine.</summary>
+    /// <remarks>
+    /// Asked by trying, because the answer is the kit's and there is no other way to ask it
+    /// that cannot go stale. The call is cheap and happens once per brush when the list is
+    /// built.
+    /// </remarks>
+    private bool Drawable(Brush brush)
+    {
+        try
+        {
+            using var attempt = Live.For(brush, _art, InkTransform.For(_art));
+
+            return true;
+        }
+        catch (NotSupportedException)
+        {
+            return false;
+        }
+    }
+
     /// <summary>
     /// The pen row: which backend, which brush, and connect.
     /// </summary>
@@ -129,14 +149,17 @@ public partial class MainWindow : Window
     /// </remarks>
     private void WirePen()
     {
-        // Only the presets a live stroke can be drawn with. Wet refuses an outlining engine
-        // because drawing one incrementally is a real piece of work and has not been done --
-        // so ink pen and marker are absent here, and PenState says so rather than leaving a
-        // reader to wonder which two are missing.
+        // Only the brushes a live stroke can be drawn with, and the kit decides which those
+        // are rather than this window: a taper's cut spacing is chosen from the whole path, so
+        // it cannot be drawn while the stroke is still arriving. Ink pen and marker are absent
+        // for that reason, and PenState says so rather than leaving a reader to wonder.
+        //
+        // Asked of the kit rather than listed here, so an engine that gains a live renderer
+        // appears without this line being edited.
         var brushes = this.FindControl<ComboBox>("PenBrush")!;
 
         brushes.ItemsSource = LabBrushes.All
-            .Where(demo => demo.Brush.Engine == Engine.Stamps)
+            .Where(demo => Drawable(demo.Brush))
             .ToList();
 
         brushes.DisplayMemberBinding = new global::Avalonia.Data.Binding("Name");

@@ -337,10 +337,15 @@ public readonly record struct Brush(
     /// </summary>
     public int Draw(Surface surface, InkTransform transform, Stroke stroke)
     {
-        // Dispatched once, here, rather than branched on further down. The two engines share
-        // a brush and share nothing else: one asks where stamps go, the other asks where the
+        // Dispatched once, here, rather than branched on further down. The engines share a
+        // brush and share nothing else: one asks where stamps go, the others ask where the
         // path turns, and below this line everything is the stamping engine's.
         if (Engine == Engine.Taper) return Taper.Draw(surface, transform, this, stroke);
+
+        if (Engine == Engine.SampleTaper)
+        {
+            return SampleTapers.Draw(surface, transform, this, stroke);
+        }
 
         var placements = Placements(stroke);
 

@@ -28,7 +28,7 @@ public sealed class LivePen : IDisposable
     private readonly Surface _document;
     private readonly Surface _shown;
 
-    private Wet? _live;
+    private ILive? _live;
     private List<Reading> _readings = [];
 
     /// <param name="document">Where the ink ends up.</param>
@@ -53,7 +53,7 @@ public sealed class LivePen : IDisposable
     /// <summary>How many readings the stroke in progress holds.</summary>
     public int Readings => _readings.Count;
 
-    /// <summary>How many stamps it has laid.</summary>
+    /// <summary>How many marks it has laid: stamps, or filled pieces.</summary>
     public int Stamps => _live?.Laid ?? 0;
 
     /// <summary>Raised whenever the shown surface has changed and wants presenting.</summary>
@@ -181,17 +181,12 @@ public sealed class LivePen : IDisposable
 
     private void Begin(InkTransform over)
     {
-        // Refused rather than approximated, and said plainly. Wet throws for an outlining
-        // engine because drawing one incrementally is a real piece of work and is not this;
-        // the caller offers only the brushes it can draw, and this is the guard behind that.
-        if (Brush.Engine != Engine.Stamps)
-        {
-            throw new NotSupportedException(
-                $"a live stroke needs {Engine.Stamps}, and this brush asks for {Brush.Engine}");
-        }
-
+        // Which renderer draws this brush is the kit's to decide, not this application's.
+        // Live.For throws for an engine that cannot be drawn as a stroke arrives -- the taper,
+        // whose cuts depend on the whole path -- and the caller offers only the brushes it can
+        // draw, so this is the guard behind that rather than the first line of defence.
         _readings = [];
-        _live = new Wet(Brush, _document, over);
+        _live = Live.For(Brush, _document, over);
     }
 
     private void Present()

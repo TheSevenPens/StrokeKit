@@ -29,6 +29,37 @@ public interface ILive : IDisposable
 
     /// <summary>The pen has lifted.</summary>
     void Finish();
+
+    /// <summary>How many marks have been laid since the stroke began.</summary>
+    /// <remarks>
+    /// Stamps for one engine and filled pieces for another, which is why it is not named for
+    /// either. It is here because a caller showing what a stroke has cost cannot ask the
+    /// engine it deliberately does not know about.
+    /// </remarks>
+    int Laid { get; }
+}
+
+/// <summary>
+/// Which live renderer draws a brush.
+/// </summary>
+/// <remarks>
+/// A brush says which engine it wants, and the engines want different things while a stroke
+/// is arriving: one holds a surface until the lift, the other holds a count. So the choice
+/// belongs here rather than in every caller. <see cref="Engine.Taper"/> has none, because it
+/// decides its cutting from the whole path — see <c>#2</c>.
+/// </remarks>
+public static class Live
+{
+    public static ILive For(Brush brush, Surface target, InkTransform transform) =>
+        brush.Engine switch
+        {
+            Engine.Stamps => new Wet(brush, target, transform),
+            Engine.SampleTaper => new Trail(brush, target, transform),
+            _ => throw new NotSupportedException(
+                $"no live renderer draws {brush.Engine}. {Engine.Stamps} and "
+                + $"{Engine.SampleTaper} can be drawn as a stroke arrives; a taper's cuts "
+                + "depend on the whole path."),
+        };
 }
 
 /// <summary>
