@@ -105,6 +105,23 @@ public static class LabBrushes
             Flow: new Flow(0.007, 0.35, Range, new Response(0.05, 0.7, 1)),
             Engine: Engine.Taper));
 
+    /// <summary>A taper cut at the readings, which is the one outline shape drawable live.</summary>
+    /// <remarks>
+    /// The same silhouette family as <see cref="InkPen"/> and a different policy underneath:
+    /// no global cut spacing and no merging of equal-coloured runs, so a stroke drawn as it
+    /// arrives makes the same mark as the same stroke drawn in one call. What it gives up is
+    /// that the mark depends on how often the tablet reported — draw the same shape slowly and
+    /// quickly and the silhouettes differ.
+    /// </remarks>
+    public static LabBrush SampleTaper => new(
+        "sample taper",
+        "an outline drawn live — one taper per reading, so the mark follows the report rate",
+        new Brush(
+            20, SKColors.Black, 1,
+            Buildup: Buildup.PerStamp,
+            Width: new Width(Thinnest, 20, Range, new Response(0, 0.9, 1.2)),
+            SpacedBy: SpacedBy.Distance, Flow: null, Engine: Engine.SampleTaper));
+
     /// <summary>All of them, in the order the application offers them.</summary>
-    public static IReadOnlyList<LabBrush> All => [RoundDabs, Beads, InkPen, Marker];
+    public static IReadOnlyList<LabBrush> All => [RoundDabs, Beads, SampleTaper, InkPen, Marker];
 }

@@ -169,6 +169,9 @@ public sealed class Trail : ILive
 
     private int _laid;
 
+    /// <summary>One piece per reading, so this is also how many readings it has been given.</summary>
+    public int Laid { get; private set; }
+
     public Trail(Brush brush, Surface target, InkTransform transform)
     {
         // Refused rather than approximated, the way Wet refuses a taper. An engine drawn as
@@ -203,6 +206,7 @@ public sealed class Trail : ILive
         var pieces = SampleTapers.Lay(_target, _transform, _brush, sofar, _laid);
 
         _laid = sofar.Count;
+        Laid += pieces;
 
         return pieces;
     }
