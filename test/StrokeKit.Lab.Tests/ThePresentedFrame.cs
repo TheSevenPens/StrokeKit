@@ -4,7 +4,7 @@ using Avalonia.Headless.XUnit;
 using StrokeKit.Figures;
 using StrokeKit.Views;
 
-namespace StrokeFieldGuide.Lab.Tests;
+namespace StrokeKit.Lab.Tests;
 
 /// <summary>
 /// What the compositor actually put on the screen, at a scaling of 1 and at 2.25.

@@ -4,7 +4,13 @@ using StrokeKit.Figures;
 using StrokeKit.Strokes;
 using StrokeKit.Surfaces;
 
-namespace StrokeFieldGuide.Lab;
+
+namespace StrokeKit.Lab;
+
+// Inside a namespace under StrokeKit, the bare name Strokes finds the StrokeKit.Strokes
+// *namespace* before any using directive, so the class of that name in it is unreachable.
+// The alias has to sit here rather than at the top of the file for the same reason.
+using Strokes = StrokeKit.Strokes.Strokes;
 
 /// <summary>
 /// The whole path from made-up pen points to pixels, run into the document so it can be

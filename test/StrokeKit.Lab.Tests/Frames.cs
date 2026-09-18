@@ -2,7 +2,7 @@ using Avalonia;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 
-namespace StrokeFieldGuide.Lab.Tests;
+namespace StrokeKit.Lab.Tests;
 
 /// <summary>
 /// Reading pixels back out of a frame the compositor produced.

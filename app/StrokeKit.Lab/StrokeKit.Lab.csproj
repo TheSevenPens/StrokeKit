@@ -3,8 +3,8 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
-    <RootNamespace>StrokeFieldGuide.Lab</RootNamespace>
-    <AssemblyName>StrokeFieldGuide.Lab</AssemblyName>
+    <RootNamespace>StrokeKit.Lab</RootNamespace>
+    <AssemblyName>StrokeKit.Lab</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>
@@ -24,15 +24,14 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\vendor\StrokeKit\src\StrokeKit\StrokeKit.csproj" />
-
     <!--
-      The book, for the six named presets and nothing else. The lab is the guide's own
-      playground and lives in its repository permanently, so this is not the dependency that
-      mattered: the recorder is the one that must not reach the book, and it does not.
+      The kit itself, beside this application rather than under a vendor folder. It used to
+      live in StrokeFieldGuide and take its brushes from the book, and the comment here used
+      to say the lab "lives in its repository permanently". It draws with its own brushes now,
+      because a kit cannot reference the book that documents it. See Brushes.cs.
     -->
-    <ProjectReference Include="..\..\src\StrokeFieldGuide\StrokeFieldGuide.csproj" />
-    <ProjectReference Include="..\..\vendor\StrokeKit\src\StrokeKit.Avalonia\StrokeKit.Avalonia.csproj" />
+    <ProjectReference Include="..\..\src\StrokeKit\StrokeKit.csproj" />
+    <ProjectReference Include="..\..\src\StrokeKit.Avalonia\StrokeKit.Avalonia.csproj" />
   </ItemGroup>
 
 </Project>

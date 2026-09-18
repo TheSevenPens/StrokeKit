@@ -8,7 +8,7 @@ using Avalonia.Input;
 using Avalonia.Threading;
 using StrokeKit.Views;
 
-namespace StrokeFieldGuide.Lab.Tests;
+namespace StrokeKit.Lab.Tests;
 
 /// <summary>
 /// The parts of the application the split deliberately left in the control: keyboard
@@ -67,7 +67,7 @@ public class TheControl
         Assert.Null(canvas.Surface.InkBounds());
 
         window.FindControl<Button>("DrawStroke")!.RaiseEvent(
-            new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+            new global::Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
         Render(window);
 
         var bounds = canvas.Surface.InkBounds();

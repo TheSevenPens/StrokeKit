@@ -5,7 +5,13 @@ using StrokeKit.Strokes;
 using StrokeKit.Surfaces;
 using StrokeKit.Views;
 
-namespace StrokeFieldGuide.Lab;
+
+namespace StrokeKit.Lab;
+
+// Inside a namespace under StrokeKit, the bare name Strokes finds the StrokeKit.Strokes
+// *namespace* before any using directive, so the class of that name in it is unreachable.
+// The alias has to sit here rather than at the top of the file for the same reason.
+using Strokes = StrokeKit.Strokes.Strokes;
 
 /// <summary>
 /// The stage-one guarantees, checked against the same presentation code the window uses,

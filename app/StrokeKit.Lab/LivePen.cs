@@ -1,9 +1,9 @@
-using StrokeFieldGuide.Brushes;
+
 using StrokeKit.Brushes;
 using StrokeKit.Strokes;
 using StrokeKit.Surfaces;
 
-namespace StrokeFieldGuide.Lab;
+namespace StrokeKit.Lab;
 
 /// <summary>
 /// A real pen drawing on a real document, a reading at a time.
@@ -45,7 +45,7 @@ public sealed class LivePen : IDisposable
     }
 
     /// <summary>The brush, already ranged against the device that is open.</summary>
-    public Brush Brush { get; set; } = Presets.RoundDabs.Brush;
+    public Brush Brush { get; set; } = LabBrushes.RoundDabs.Brush;
 
     /// <summary>Whether the tip is down.</summary>
     public bool Drawing => _live is not null;
@@ -178,7 +178,6 @@ public sealed class LivePen : IDisposable
         _live?.Dispose();
         _live = null;
     }
-
 
     private void Begin(InkTransform over)
     {

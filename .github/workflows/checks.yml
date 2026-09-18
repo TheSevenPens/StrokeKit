@@ -26,10 +26,35 @@ jobs:
       - name: Build
         run: dotnet build StrokeKit.slnx -c Release
 
-      # No window is opened by any of these: the trace format's column handling, the batch
-      # clock, and the contracts a live stroke is built under are all arithmetic and files.
+      # Two suites now. StrokeKit.Tests is arithmetic and files -- the trace format's column
+      # handling, the batch clock, the contracts a live stroke is built under -- and opens no
+      # window. StrokeKit.Lab.Tests does: it runs real windows on Avalonia's headless platform
+      # and compares captured frames against the surfaces they came from.
+      #
+      # They are on different xunit versions, v2 and v3, because Avalonia.Headless.XUnit
+      # depends on v3. One `dotnet test` over the solution runs both.
       - name: Test
         run: dotnet test StrokeKit.slnx -c Release --no-build
+
+      # The same guarantees checked against the application as a built program rather than
+      # against the library from a test. No window is opened: the presenter draws into a
+      # raster surface standing in for a display, so what a reader would see is read back and
+      # counted. Came here with the lab from StrokeFieldGuide.
+      - name: Self-test
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem -Recurse -Filter StrokeKit.Lab.exe app/*/bin/Release |
+                 Select-Object -First 1
+          if (-not $exe) { throw "StrokeKit.Lab.exe not found" }
+
+          # Start-Process -Wait rather than the call operator: this is a GUI subsystem
+          # binary, so PowerShell does not wait for it and $LASTEXITCODE comes back empty,
+          # which would make this step pass whatever the checks reported.
+          $out = Join-Path $env:RUNNER_TEMP 'selftest.txt'
+          $proc = Start-Process -FilePath $exe.FullName -ArgumentList '--selftest' `
+                                -Wait -PassThru -RedirectStandardOutput $out
+          if (Test-Path $out) { Get-Content $out }
+          if ($proc.ExitCode -ne 0) { throw "self-test failed with exit code $($proc.ExitCode)" }
 
   # The pin is deliberate -- see the README -- but a pin that is never checked against the
   # thing it pins is how a kit quietly stops compiling against its own dependency's future.

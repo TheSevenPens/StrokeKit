@@ -1,6 +1,6 @@
 using Avalonia.Headless.XUnit;
 
-namespace StrokeFieldGuide.Lab.Tests;
+namespace StrokeKit.Lab.Tests;
 
 public class Smoke
 {

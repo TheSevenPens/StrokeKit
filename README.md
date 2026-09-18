@@ -36,6 +36,12 @@ mark, and the code that lays one down. What each control is for, and what breaks
 wrong, is the subject of StrokeFieldGuide rather than of this README — that book is the
 documentation for this code, and the checks in it run against these types.
 
+`app/StrokeKit.Lab` is a demonstration: a window you can draw in with a real pen, a surface
+view you can zoom and pan, and a set of brushes to try. It came from StrokeFieldGuide, where
+it was the book's playground, and it is here because what it demonstrates is this kit rather
+than that book. It draws with its own brushes for that reason — the book's named presets are
+fixtures its pages measure against, and a kit cannot reference the book that documents it.
+
 ## Building
 
 WinPenKit is a submodule, so:
@@ -83,11 +89,20 @@ the repository and not to whatever sits beside it.
 
 ## Tests
 
-There are none here yet, and that is worth saying plainly rather than leaving to be discovered.
-The behaviour in this kit is covered by StrokeFieldGuide's suite, which runs against these
-types from the consumer's side — the trace format's column handling, the batch clock, the
-brush engines and the corpus checks are all exercised there. Moving the ones that are about
-this code rather than about the book is the obvious next thing.
+`dotnet test StrokeKit.slnx` runs two suites. `StrokeKit.Tests` is arithmetic and files — the
+trace format's column handling, the batch clock, the contracts a live stroke is built under —
+and opens no window. `StrokeKit.Lab.Tests` does: it runs real windows on Avalonia's headless
+platform and compares captured frames against the surfaces they came from.
+
+The two are on different xunit versions, v2 and v3, because `Avalonia.Headless.XUnit` depends
+on v3. One `dotnet test` over the solution runs both.
+
+The lab also checks itself as a built program rather than from a test: `StrokeKit.Lab.exe
+--selftest` prints a line per check and exits non-zero if any fails. CI runs it.
+
+Plenty here is still covered from the consumer's side by StrokeFieldGuide's suite, which is
+where the brush engines and the corpus checks are exercised. That book is the documentation
+for this code.
 
 ## History
 

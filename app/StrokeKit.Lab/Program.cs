@@ -1,6 +1,6 @@
 using Avalonia;
 
-namespace StrokeFieldGuide.Lab;
+namespace StrokeKit.Lab;
 
 internal static class Program
 {

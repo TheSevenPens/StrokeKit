@@ -2,7 +2,7 @@ using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 
-namespace StrokeFieldGuide.Lab;
+namespace StrokeKit.Lab;
 
 public partial class App : Application
 {

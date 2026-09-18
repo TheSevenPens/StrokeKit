@@ -6,7 +6,7 @@ using SkiaSharp;
 using StrokeKit.Surfaces;
 using StrokeKit.Views;
 
-namespace StrokeFieldGuide.Lab.Tests;
+namespace StrokeKit.Lab.Tests;
 
 /// <summary>
 /// The step between the presenter and the screen: a surface built over somebody else's

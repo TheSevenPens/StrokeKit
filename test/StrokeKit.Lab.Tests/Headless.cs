@@ -2,12 +2,12 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using StrokeKit.Avalonia;
-using StrokeFieldGuide.Lab;
-using StrokeFieldGuide.Lab.Tests;
+using StrokeKit.Lab;
+using StrokeKit.Lab.Tests;
 
 [assembly: AvaloniaTestApplication(typeof(Headless))]
 
-namespace StrokeFieldGuide.Lab.Tests;
+namespace StrokeKit.Lab.Tests;
 
 /// <summary>
 /// A real Avalonia application with no screen attached.

@@ -6,7 +6,7 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
-using StrokeFieldGuide.Brushes;
+
 using StrokeKit.Brushes;
 using StrokeKit.Figures;
 using StrokeKit.Strokes;
@@ -14,7 +14,7 @@ using StrokeKit.Surfaces;
 using StrokeKit.Views;
 using WinPenKit;
 
-namespace StrokeFieldGuide.Lab;
+namespace StrokeKit.Lab;
 
 [SuppressMessage("Usage", "CA1001:Types that own disposable fields should be disposable",
     Justification =
@@ -135,11 +135,11 @@ public partial class MainWindow : Window
         // reader to wonder which two are missing.
         var brushes = this.FindControl<ComboBox>("PenBrush")!;
 
-        brushes.ItemsSource = Presets.All
-            .Where(preset => preset.Brush.Engine == Engine.Stamps)
+        brushes.ItemsSource = LabBrushes.All
+            .Where(demo => demo.Brush.Engine == Engine.Stamps)
             .ToList();
 
-        brushes.DisplayMemberBinding = new Avalonia.Data.Binding("Name");
+        brushes.DisplayMemberBinding = new global::Avalonia.Data.Binding("Name");
         brushes.SelectedIndex = 0;
         brushes.SelectionChanged += (_, _) => TakeBrush();
 
@@ -284,7 +284,7 @@ public partial class MainWindow : Window
     private void TakeBrush()
     {
         if (_live is null) return;
-        if (this.FindControl<ComboBox>("PenBrush")!.SelectedItem is not Preset preset) return;
+        if (this.FindControl<ComboBox>("PenBrush")!.SelectedItem is not LabBrush preset) return;
 
         var range = _pen.MaxPressure;
 

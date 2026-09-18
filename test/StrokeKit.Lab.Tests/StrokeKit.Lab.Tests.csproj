@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <IsPackable>false</IsPackable>
-    <RootNamespace>StrokeFieldGuide.Lab.Tests</RootNamespace>
+    <RootNamespace>StrokeKit.Lab.Tests</RootNamespace>
     <!-- xunit v3 runs as a program of its own. -->
     <OutputType>Exe</OutputType>
   </PropertyGroup>
@@ -26,7 +26,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\app\StrokeFieldGuide.Lab\StrokeFieldGuide.Lab.csproj" />
+    <ProjectReference Include="..\..\app\StrokeKit.Lab\StrokeKit.Lab.csproj" />
   </ItemGroup>
 
 </Project>
