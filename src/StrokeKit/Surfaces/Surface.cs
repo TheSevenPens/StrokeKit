@@ -347,5 +347,86 @@ public sealed class Surface : IDisposable
         return grown;
     }
 
+    /// <summary>
+    /// The surface to draw on now that the host is <paramref name="logicalWidth"/> by
+    /// <paramref name="logicalHeight"/> at <paramref name="scale"/>, which may be this one.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Answers this surface when nothing needs to change</b>, so a caller compares by
+    /// reference to know whether to hand the new one on and release the old:
+    /// </para>
+    /// <code>
+    /// var next = art.Resized(width, height, scale);
+    ///
+    /// if (!ReferenceEquals(next, art)) { Show(next); art.Dispose(); art = next; }
+    /// </code>
+    /// <para>
+    /// <b>A change of scale rebuilds and resamples.</b> A surface carries the scale it was made
+    /// at, and one made at 2.25 and presented at 1.75 draws every mark long by the ratio —
+    /// correct at the origin and drifting further out the further it goes. Moving a window
+    /// between displays does it. The old content is redrawn at its <i>apparent</i> size rather
+    /// than copied pixel for pixel, because it was put down in logical units and belongs where
+    /// those units are.
+    /// </para>
+    /// <para>
+    /// <b>A change of size at the same scale only ever grows.</b> Shrinking would throw away
+    /// whatever is outside the smaller bounds, and it does not come back when the host grows
+    /// again — so a host that gets smaller keeps the surface it had. What that costs is memory;
+    /// what shrinking costs is a reader's work.
+    /// </para>
+    /// <para>
+    /// This is what <see cref="Grown"/> does, plus the scale. Grown is still here because
+    /// growing at a known pixel count is a different question from fitting a host, and
+    /// <c>PenPad</c> asks the first one.
+    /// </para>
+    /// </remarks>
+    public Surface Resized(double logicalWidth, double logicalHeight, double scale)
+    {
+        if (!(logicalWidth > 0) || !(logicalHeight > 0) || !(scale > 0) || double.IsNaN(scale))
+        {
+            return this;
+        }
+
+        if (!SameScaleAs(scale, logicalWidth, logicalHeight))
+        {
+            var moved = Create(logicalWidth, logicalHeight, scale);
+
+            // At the size it looked, not the pixels it occupied.
+            using var image = Snapshot();
+
+            moved.Canvas.DrawImage(image, new SKRect(
+                0, 0,
+                (float)(PixelWidth * moved.ScaleX / ScaleX),
+                (float)(PixelHeight * moved.ScaleY / ScaleY)));
+
+            return moved;
+        }
+
+        var wide = (int)Math.Round(logicalWidth * scale);
+        var high = (int)Math.Round(logicalHeight * scale);
+
+        if (wide <= PixelWidth && high <= PixelHeight) return this;
+
+        return Grown(wide, high, logicalWidth, logicalHeight);
+    }
+
+    /// <summary>Whether a wanted scale is the one this surface already has.</summary>
+    /// <remarks>
+    /// <para>
+    /// Not an equality test, and it cannot be one. <see cref="ScaleX"/> is derived by dividing
+    /// two numbers that were themselves arrived at by rounding, so a surface built for 2.25
+    /// does not report exactly 2.25 and comparing them directly rebuilds on every frame.
+    /// </para>
+    /// <para>
+    /// The tolerance is a pixel across the whole surface, which is the smallest difference that
+    /// can move a mark at all. Anything finer is a rounding artefact and anything coarser could
+    /// leave a visible drift standing.
+    /// </para>
+    /// </remarks>
+    private bool SameScaleAs(double scale, double logicalWidth, double logicalHeight) =>
+        Math.Abs(scale - ScaleX) * logicalWidth < 1
+        && Math.Abs(scale - ScaleY) * logicalHeight < 1;
+
     public void Dispose() => _surface.Dispose();
 }
