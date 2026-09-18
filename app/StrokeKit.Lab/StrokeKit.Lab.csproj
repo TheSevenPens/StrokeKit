@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+    <RootNamespace>StrokeKit.Lab</RootNamespace>
+    <AssemblyName>StrokeKit.Lab</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      Named backends rather than the Avalonia.Desktop metapackage, which also pulls the X11,
+      FreeDesktop and macOS subtrees this Windows-only application can never load. Avalonia
+      12 also split text shaping out of Skia: without Avalonia.HarfBuzz the application
+      throws "No text shaping system configured" at startup, and naming the other backends
+      does not register it. Both facts are WinPenKit's, paid for there and reused here.
+    -->
+    <PackageReference Include="Avalonia" Version="$(AvaloniaVersion)" />
+    <PackageReference Include="Avalonia.Win32" Version="$(AvaloniaVersion)" />
+    <PackageReference Include="Avalonia.Skia" Version="$(AvaloniaVersion)" />
+    <PackageReference Include="Avalonia.HarfBuzz" Version="$(AvaloniaVersion)" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="$(AvaloniaVersion)" />
+    <PackageReference Include="SkiaSharp" Version="$(SkiaSharpVersion)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      The kit itself, beside this application rather than under a vendor folder. It used to
+      live in StrokeFieldGuide and take its brushes from the book, and the comment here used
+      to say the lab "lives in its repository permanently". It draws with its own brushes now,
+      because a kit cannot reference the book that documents it. See Brushes.cs.
+    -->
+    <ProjectReference Include="..\..\src\StrokeKit\StrokeKit.csproj" />
+    <ProjectReference Include="..\..\src\StrokeKit.Avalonia\StrokeKit.Avalonia.csproj" />
+  </ItemGroup>
+
+</Project>
