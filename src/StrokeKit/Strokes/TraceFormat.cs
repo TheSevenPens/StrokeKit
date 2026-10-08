@@ -38,8 +38,8 @@ public static class TraceFormat
     public const string Format = "stroke-field-guide/take";
 
     /// <summary>
-    /// Seven, since a recording began to say who made it, on what firmware, and anything they
-    /// had to add.
+    /// Eight, since a recording says what its <c>x</c> and <c>y</c> are, and how far that is in
+    /// millimetres where it can.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -86,13 +86,28 @@ public static class TraceFormat
     /// file an empty string means the person was asked and wrote nothing.
     /// </para>
     /// <para>
+    /// Version eight adds <c>coordinates</c>, which says what <c>x</c> and <c>y</c> are: positions
+    /// on the desktop (<c>space: "desktop"</c>, what every earlier file means) or the device's
+    /// own digitizer counts (<c>space: "tablet"</c>, with the digitizer's <c>maxX</c>,
+    /// <c>maxY</c>, <c>widthMm</c> and <c>heightMm</c>, and no <c>placement</c>). It was
+    /// defined in StrokeCorpus for a recorder that reads a tablet driver directly; this one
+    /// writes the desktop form. A desktop recording may also say how big the tablet is
+    /// (<c>widthMm</c>, <c>heightMm</c>: the whole active area, the same thing they mean in tablet
+    /// space), the part of it the driver mapped to the desktop (<c>mappedWidthMm</c>,
+    /// <c>mappedHeightMm</c>) and the millimetres one pixel covers on each axis
+    /// (<c>mmPerPixelX</c>, <c>mmPerPixelY</c>, which differ whenever the mapping stretches the
+    /// tablet onto a desktop of another shape). Those are <b>absent</b> where the backend cannot
+    /// say, which is no claim and not a claim of zero. <see cref="MillimetresPerUnit"/>
+    /// reads the answer for either space.
+    /// </para>
+    /// <para>
     /// The twelve version-one traces already recorded are <b>left as they are</b>. They are
     /// evidence, they are cited by number in the notes, and rewriting them to tidy the format
     /// would churn the corpus without adding a reading. Anything reading these files takes both
     /// shapes: a top-level <c>readings</c> is a take of one stroke.
     /// </para>
     /// </remarks>
-    public const int Version = 7;
+    public const int Version = 8;
 
     /// <summary>What the two clocks are, said in the file so a reader need not be told.</summary>
     public const string Clocks =
@@ -181,6 +196,77 @@ public static class TraceFormat
             (reading, _) => Round(reading.Twist, 2),
             (reading, value) => reading with { Twist = value }),
     ];
+
+    /// <summary>What <c>coordinates.space</c> can be.</summary>
+    public static class CoordinateSpace
+    {
+        /// <summary>Positions on the desktop. What a file with no <c>coordinates</c> means too.</summary>
+        public const string Desktop = "desktop";
+
+        /// <summary>The device's own digitizer counts, before any mapping to a display.</summary>
+        public const string Tablet = "tablet";
+    }
+
+    /// <summary>
+    /// How many millimetres one unit of <c>x</c>, and one of <c>y</c>, is on the tablet -- or
+    /// null where the file does not say.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// One question with two answers, so that analysis does not branch on which recorder wrote
+    /// the file. A <b>tablet</b> recording is in digitizer counts and the scale is the surface
+    /// over the largest count, <c>widthMm / maxX</c>. A <b>desktop</b> recording is in pixels and
+    /// has a scale only where the recorder could ask the driver, as <c>mmPerPixelX</c> and
+    /// <c>mmPerPixelY</c>.
+    /// </para>
+    /// <para>
+    /// <b>Per axis, and the two differ.</b> A mapping that stretches a tablet onto a desktop of
+    /// another shape makes a pixel a different distance across than down, so a distance is
+    /// <c>sqrt((dx * X)^2 + (dy * Y)^2)</c> and not a length in pixels times either figure.
+    /// </para>
+    /// <para>
+    /// Null is an answer, for a file before version eight, a desktop recording from a backend
+    /// that could not be asked, or a figure that is missing or not positive. It is never a
+    /// guess: nothing here derives a scale from a surface size and a screen, because the
+    /// mapped part of the tablet is not the whole of it.
+    /// </para>
+    /// </remarks>
+    public static (double X, double Y)? MillimetresPerUnit(JsonElement root)
+    {
+        if (!root.TryGetProperty(Field.Coordinates, out var coordinates)
+            || coordinates.ValueKind != JsonValueKind.Object)
+        {
+            return null;
+        }
+
+        double Positive(string name) =>
+            coordinates.TryGetProperty(name, out var value)
+            && value.ValueKind == JsonValueKind.Number
+            && value.GetDouble() is var number and > 0
+                ? number
+                : 0;
+
+        var space = coordinates.TryGetProperty(Field.Space, out var named) ? named.GetString() : null;
+
+        switch (space)
+        {
+            case CoordinateSpace.Tablet:
+                var (maxX, maxY) = (Positive(Field.MaxX), Positive(Field.MaxY));
+                var (width, height) = (Positive(Field.WidthMm), Positive(Field.HeightMm));
+
+                return maxX > 0 && maxY > 0 && width > 0 && height > 0
+                    ? (width / maxX, height / maxY)
+                    : null;
+
+            case CoordinateSpace.Desktop:
+                var (perX, perY) = (Positive(Field.MmPerPixelX), Positive(Field.MmPerPixelY));
+
+                return perX > 0 && perY > 0 ? (perX, perY) : null;
+
+            default:
+                return null;
+        }
+    }
 
     /// <summary>The column names, in order, as the file declares them.</summary>
     public static readonly IReadOnlyList<string> Names = [.. Columns.Select(column => column.Name)];
@@ -302,6 +388,17 @@ public static class TraceFormat
         public const string Api = "api";
         public const string FullScalePressure = "fullScalePressure";
         public const string Conventions = "conventions";
+
+        public const string Coordinates = "coordinates";
+        public const string Space = "space";
+        public const string MaxX = "maxX";
+        public const string MaxY = "maxY";
+        public const string WidthMm = "widthMm";
+        public const string HeightMm = "heightMm";
+        public const string MappedWidthMm = "mappedWidthMm";
+        public const string MappedHeightMm = "mappedHeightMm";
+        public const string MmPerPixelX = "mmPerPixelX";
+        public const string MmPerPixelY = "mmPerPixelY";
 
         public const string Placement = "placement";
         public const string Units = "units";
