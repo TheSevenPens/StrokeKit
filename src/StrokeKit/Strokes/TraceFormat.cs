@@ -38,7 +38,8 @@ public static class TraceFormat
     public const string Format = "stroke-field-guide/take";
 
     /// <summary>
-    /// Six, since the approach was aged on the host clock.
+    /// Seven, since a recording began to say who made it, on what firmware, and anything they
+    /// had to add.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -78,13 +79,20 @@ public static class TraceFormat
     /// the recorder was given and discarded.
     /// </para>
     /// <para>
+    /// Version seven changes no columns either. It adds three strings that are typed in rather
+    /// than discovered: <c>username</c> and <c>notes</c> at the top level, about the session,
+    /// and <c>firmware</c> inside <c>device</c> beside the driver, since it describes the
+    /// tablet. A file before seven did not ask, so for it they are unrecorded; in a version-seven
+    /// file an empty string means the person was asked and wrote nothing.
+    /// </para>
+    /// <para>
     /// The twelve version-one traces already recorded are <b>left as they are</b>. They are
     /// evidence, they are cited by number in the notes, and rewriting them to tidy the format
     /// would churn the corpus without adding a reading. Anything reading these files takes both
     /// shapes: a top-level <c>readings</c> is a take of one stroke.
     /// </para>
     /// </remarks>
-    public const int Version = 6;
+    public const int Version = 7;
 
     /// <summary>What the two clocks are, said in the file so a reader need not be told.</summary>
     public const string Clocks =
@@ -267,6 +275,8 @@ public static class TraceFormat
         public const string Id = "id";
         public const string Gesture = "gesture";
         public const string Intent = "intent";
+        public const string Username = "username";
+        public const string Notes = "notes";
         public const string RecordedAt = "recordedAt";
         public const string EndedBy = "endedBy";
         public const string StrokeCount = "strokeCount";
@@ -288,6 +298,7 @@ public static class TraceFormat
         public const string Device = "device";
         public const string Tablet = "tablet";
         public const string Driver = "driver";
+        public const string Firmware = "firmware";
         public const string Api = "api";
         public const string FullScalePressure = "fullScalePressure";
         public const string Conventions = "conventions";
