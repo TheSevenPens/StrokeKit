@@ -361,6 +361,13 @@ public static class TraceFormat
         public const string Id = "id";
         public const string Gesture = "gesture";
         public const string Intent = "intent";
+
+        /// <summary>
+        /// What the person who made a recording calls it. Optional, in any version, and the one
+        /// field of a recording that may be added or changed after it was made: a label and not
+        /// a measurement. Absent means unnamed, never an empty string.
+        /// </summary>
+        public const string Name = "name";
         public const string Username = "username";
         public const string Notes = "notes";
         public const string RecordedAt = "recordedAt";
