@@ -392,6 +392,14 @@ public static class TraceFormat
         public const string Tablet = "tablet";
         public const string Driver = "driver";
         public const string Firmware = "firmware";
+
+        /// <summary>
+        /// Which pen a recording was made with, as the person who made it typed it. Inside
+        /// <c>device</c>, optional in any version, and absent when nobody said: never an empty
+        /// string. Part of the evidence, so unlike <see cref="Name"/> it cannot be added to a
+        /// recording after the fact.
+        /// </summary>
+        public const string Pen = "pen";
         public const string Api = "api";
         public const string FullScalePressure = "fullScalePressure";
         public const string Conventions = "conventions";
